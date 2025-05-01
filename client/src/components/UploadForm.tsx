@@ -1,8 +1,8 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -33,7 +33,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { UploadCloud, X } from "lucide-react";
+import { UploadCloud, X, Film, Smartphone } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 interface UploadFormProps {
   open: boolean;
@@ -46,6 +48,7 @@ const uploadFormSchema = z.object({
   categories: z.array(z.string()).min(1, "Please select at least one category"),
   tags: z.string().optional(),
   isQuickie: z.boolean().default(false),
+  channelId: z.number().optional(),
 });
 
 type UploadFormValues = z.infer<typeof uploadFormSchema>;
@@ -58,6 +61,14 @@ export default function UploadForm({ open, onOpenChange }: UploadFormProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadType, setUploadType] = useState<"video" | "quickie">("video");
+  const [videoDuration, setVideoDuration] = useState<number | null>(null);
+
+  // Fetch user's channels
+  const { data: channels } = useQuery({
+    queryKey: ['/api/channels/user'],
+    enabled: !!user,
+  });
 
   const form = useForm<UploadFormValues>({
     resolver: zodResolver(uploadFormSchema),
@@ -67,8 +78,38 @@ export default function UploadForm({ open, onOpenChange }: UploadFormProps) {
       categories: [],
       tags: "",
       isQuickie: false,
+      channelId: undefined,
     },
   });
+
+  // Update isQuickie value when upload type changes
+  useEffect(() => {
+    form.setValue("isQuickie", uploadType === "quickie");
+  }, [uploadType, form]);
+
+  // Check video duration when a file is selected
+  useEffect(() => {
+    if (selectedFile && selectedFile.type.startsWith('video/')) {
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      
+      video.onloadedmetadata = () => {
+        const duration = Math.round(video.duration);
+        setVideoDuration(duration);
+        
+        // If it's a quickie and longer than 2 minutes, show a warning
+        if (uploadType === "quickie" && duration > 120) {
+          toast({
+            title: "Warning",
+            description: "Quickie videos must be 2 minutes or less. This video is too long for a quickie.",
+            variant: "destructive",
+          });
+        }
+      };
+      
+      video.src = URL.createObjectURL(selectedFile);
+    }
+  }, [selectedFile, uploadType, toast]);
 
   const uploadVideoMutation = useMutation({
     mutationFn: async (formData: FormData) => {
@@ -124,6 +165,7 @@ export default function UploadForm({ open, onOpenChange }: UploadFormProps) {
     form.reset();
     setUploading(false);
     setUploadProgress(0);
+    setVideoDuration(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -134,6 +176,16 @@ export default function UploadForm({ open, onOpenChange }: UploadFormProps) {
       toast({
         title: "Error",
         description: "Please select a video file to upload",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Validate quickie duration
+    if (values.isQuickie && videoDuration && videoDuration > 120) {
+      toast({
+        title: "Error",
+        description: "Quickie videos must be 2 minutes or less. Please upload a shorter video or select 'Regular Video' option.",
         variant: "destructive",
       });
       return;
@@ -150,6 +202,10 @@ export default function UploadForm({ open, onOpenChange }: UploadFormProps) {
     formData.append("categories", JSON.stringify(values.categories));
     formData.append("tags", values.tags || "");
     formData.append("isQuickie", values.isQuickie.toString());
+    
+    if (values.channelId) {
+      formData.append("channelId", values.channelId.toString());
+    }
     
     // Simulate upload progress (in a real app, this would be from actual upload progress)
     const simulateProgress = () => {
@@ -180,7 +236,29 @@ export default function UploadForm({ open, onOpenChange }: UploadFormProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-poppins font-bold">Upload Video</DialogTitle>
+          <DialogTitle className="text-2xl font-bold mb-4">Upload Content</DialogTitle>
+          <Tabs value={uploadType} onValueChange={(value) => setUploadType(value as "video" | "quickie")}>
+            <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsTrigger value="video" className="flex items-center justify-center">
+                <Film className="mr-2 h-4 w-4" />
+                Regular Video
+              </TabsTrigger>
+              <TabsTrigger value="quickie" className="flex items-center justify-center">
+                <Smartphone className="mr-2 h-4 w-4" />
+                Quickie
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="video">
+              <div className="text-sm text-muted-foreground mb-4">
+                <p>Upload a regular video with 16:9 aspect ratio (any length)</p>
+              </div>
+            </TabsContent>
+            <TabsContent value="quickie">
+              <div className="text-sm text-muted-foreground mb-4">
+                <p>Upload a vertical short video (max 2 minutes, 9:16 aspect ratio)</p>
+              </div>
+            </TabsContent>
+          </Tabs>
         </DialogHeader>
         
         {!selectedFile ? (
@@ -190,7 +268,11 @@ export default function UploadForm({ open, onOpenChange }: UploadFormProps) {
             onDrop={handleDrop}
           >
             <UploadCloud className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500 mb-4" />
-            <p className="mb-4">Drag and drop your video file here</p>
+            <p className="mb-4">
+              {uploadType === "video" 
+                ? "Drag and drop your video file here (16:9 ratio recommended)" 
+                : "Drag and drop your quickie video (vertical 9:16 ratio, max 2 minutes)"}
+            </p>
             <p className="text-sm text-gray-500 mb-4">or</p>
             <Button onClick={() => fileInputRef.current?.click()}>
               Select File
@@ -202,11 +284,15 @@ export default function UploadForm({ open, onOpenChange }: UploadFormProps) {
               accept="video/*"
               onChange={handleFileSelect}
             />
-            <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">Max file size: 5GB</p>
+            <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
+              {uploadType === "video" 
+                ? "Max file size: 5GB" 
+                : "Max duration: 2 minutes, Max file size: 500MB"}
+            </p>
           </div>
         ) : (
           <div className="mb-6">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-4">
               <div className="flex items-center">
                 <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded-lg mr-3">
                   <video className="h-16 w-28 object-cover rounded">
@@ -215,7 +301,15 @@ export default function UploadForm({ open, onOpenChange }: UploadFormProps) {
                 </div>
                 <div>
                   <p className="font-medium">{selectedFile.name}</p>
-                  <p className="text-xs text-gray-500">{(selectedFile.size / (1024 * 1024)).toFixed(2)} MB</p>
+                  <p className="text-xs text-gray-500">
+                    {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
+                    {videoDuration && ` • ${Math.floor(videoDuration / 60)}:${(videoDuration % 60).toString().padStart(2, '0')}`}
+                  </p>
+                  {uploadType === "quickie" && videoDuration && videoDuration > 120 && (
+                    <p className="text-xs text-red-500 mt-1">
+                      ⚠️ This video exceeds the 2-minute limit for quickies
+                    </p>
+                  )}
                 </div>
               </div>
               <Button variant="ghost" size="icon" onClick={() => setSelectedFile(null)}>
@@ -262,6 +356,39 @@ export default function UploadForm({ open, onOpenChange }: UploadFormProps) {
                     </FormItem>
                   )}
                 />
+                
+                {channels && channels.length > 0 && (
+                  <FormField
+                    control={form.control}
+                    name="channelId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Channel</FormLabel>
+                        <Select
+                          onValueChange={(value) => field.onChange(parseInt(value))}
+                          defaultValue={field.value?.toString()}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a channel" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {channels.map((channel: any) => (
+                              <SelectItem key={channel.id} value={channel.id.toString()}>
+                                {channel.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          Choose which channel to upload this content to
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
                 
                 <FormField
                   control={form.control}
@@ -335,27 +462,6 @@ export default function UploadForm({ open, onOpenChange }: UploadFormProps) {
                   )}
                 />
                 
-                <FormField
-                  control={form.control}
-                  name="isQuickie"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md p-4 border">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>Add to Quickies</FormLabel>
-                        <FormDescription>
-                          Short format videos (under 60 seconds) for the Quickies section
-                        </FormDescription>
-                      </div>
-                    </FormItem>
-                  )}
-                />
-                
                 <DialogFooter className="flex justify-end gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
                   <Button 
                     type="button" 
@@ -367,7 +473,7 @@ export default function UploadForm({ open, onOpenChange }: UploadFormProps) {
                   </Button>
                   <Button 
                     type="submit" 
-                    disabled={uploading}
+                    disabled={uploading || (uploadType === "quickie" && videoDuration && videoDuration > 120)}
                   >
                     {uploading ? `Uploading (${uploadProgress}%)` : "Upload"}
                   </Button>
