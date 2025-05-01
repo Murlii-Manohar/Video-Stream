@@ -80,7 +80,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
         
         {user && (
           <div className="mb-6">
-            <h3 className="font-medium text-sm uppercase text-gray-500 dark:text-gray-400 mb-2">Your Account</h3>
+            <h3 className="font-medium text-sm uppercase text-muted-foreground mb-2">Your Account</h3>
             <ul className="space-y-1">
               <NavItem 
                 href={`/channel/${user.id}`} 
@@ -112,14 +112,14 @@ export function Sidebar({ isOpen }: SidebarProps) {
         )}
         
         <div className="mb-6">
-          <h3 className="font-medium text-sm uppercase text-gray-500 dark:text-gray-400 mb-2">Categories</h3>
+          <h3 className="font-medium text-sm uppercase text-muted-foreground mb-2">Categories</h3>
           <ul className="space-y-1">
             {["Amateur", "Professional", "Verified Models", "Trending", "Most Viewed"].map((category) => {
               const slug = category.toLowerCase().replace(/\s+/g, '-');
               return (
                 <li key={slug}>
                   <div 
-                    className="flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
+                    className="flex items-center px-4 py-2 rounded-lg hover:bg-muted cursor-pointer"
                     onClick={() => navigate(`/category/${slug}`)}
                   >
                     <span>{category}</span>
@@ -132,12 +132,12 @@ export function Sidebar({ isOpen }: SidebarProps) {
         
         {user && subscriptions && Array.isArray(subscriptions) && subscriptions.length > 0 && (
           <div className="mb-6">
-            <h3 className="font-medium text-sm uppercase text-gray-500 dark:text-gray-400 mb-2">Subscriptions</h3>
+            <h3 className="font-medium text-sm uppercase text-muted-foreground mb-2">Subscriptions</h3>
             <ul className="space-y-2">
               {subscriptions.map((sub: any) => (
                 <li key={sub.id}>
                   <div 
-                    className="flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
+                    className="flex items-center px-4 py-2 rounded-lg hover:bg-muted cursor-pointer"
                     onClick={() => navigate(`/channel/${sub.channel?.owner?.id}`)}
                   >
                     <div className="relative w-7 h-7 rounded-full overflow-hidden mr-3">
@@ -155,8 +155,8 @@ export function Sidebar({ isOpen }: SidebarProps) {
           </div>
         )}
         
-        <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-          <div className="text-sm text-gray-500 dark:text-gray-400 space-y-2">
+        <div className="pt-4 border-t border-border">
+          <div className="text-sm text-muted-foreground space-y-2">
             <p>© 2023 XPlayHD</p>
             <div className="flex flex-wrap gap-x-2 gap-y-1">
               <div className="hover:underline cursor-pointer" onClick={() => navigate("/terms")}>Terms</div>

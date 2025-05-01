@@ -57,14 +57,14 @@ export function Header({ toggleSidebar }: HeaderProps) {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-white dark:bg-dark-surface border-b border-gray-200 dark:border-gray-700 shadow-sm">
+    <header className="sticky top-0 z-50 bg-background border-b border-border shadow-sm">
       <div className="flex items-center justify-between h-16 px-4 md:px-6">
         {/* Left section: Logo and sidebar toggle */}
         <div className="flex items-center">
           <Button 
             variant="ghost" 
             size="icon" 
-            className="mr-4 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="mr-4 rounded-full hover:bg-muted"
             onClick={toggleSidebar}
           >
             <MenuIcon className="h-5 w-5" />
@@ -80,7 +80,7 @@ export function Header({ toggleSidebar }: HeaderProps) {
             <Input
               type="text"
               placeholder="Search videos, channels, or categories"
-              className="w-full h-10 pl-4 pr-10 rounded-full bg-light-surface dark:bg-gray-800"
+              className="w-full h-10 pl-4 pr-10 rounded-full bg-muted"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
