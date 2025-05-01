@@ -146,7 +146,8 @@ export default function UploadForm({ open, onOpenChange }: UploadFormProps) {
     formData.append("videoFile", selectedFile);
     formData.append("title", values.title);
     formData.append("description", values.description || "");
-    formData.append("category", values.category);
+    // Add categories as JSON array
+    formData.append("categories", JSON.stringify(values.categories));
     formData.append("tags", values.tags || "");
     formData.append("isQuickie", values.isQuickie.toString());
     
@@ -264,27 +265,54 @@ export default function UploadForm({ open, onOpenChange }: UploadFormProps) {
                 
                 <FormField
                   control={form.control}
-                  name="category"
+                  name="categories"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Category</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a category" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="Amateur">Amateur</SelectItem>
-                          <SelectItem value="Professional">Professional</SelectItem>
-                          <SelectItem value="Verified Models">Verified Models</SelectItem>
-                          <SelectItem value="Couples">Couples</SelectItem>
-                          <SelectItem value="Solo">Solo</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <FormLabel>Categories</FormLabel>
+                      <FormDescription>
+                        Select one or more categories that apply to your video
+                      </FormDescription>
+                      <div className="grid grid-cols-2 gap-2 mt-2">
+                        {[
+                          "Amateur",
+                          "Professional",
+                          "Verified Models",
+                          "Couples",
+                          "Solo",
+                          "MILF",
+                          "Stepmom",
+                          "Teen",
+                          "Anal",
+                          "Threesome",
+                          "Cheating",
+                          "Lesbian"
+                        ].map((category) => (
+                          <FormItem
+                            key={category}
+                            className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-2"
+                          >
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value?.includes(category)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    field.onChange([...field.value, category]);
+                                  } else {
+                                    field.onChange(
+                                      field.value?.filter(
+                                        (value) => value !== category
+                                      )
+                                    );
+                                  }
+                                }}
+                              />
+                            </FormControl>
+                            <FormLabel className="text-sm font-normal">
+                              {category}
+                            </FormLabel>
+                          </FormItem>
+                        ))}
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}

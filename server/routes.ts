@@ -421,11 +421,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         thumbnailPath = `/uploads/${thumbnailFile.filename}`;
       }
       
+      // Parse categories from JSON string if present
+      let categories = [];
+      if (req.body.categories) {
+        try {
+          categories = JSON.parse(req.body.categories);
+        } catch (e) {
+          console.error('Failed to parse categories:', e);
+        }
+      }
+      
       const videoData = {
         ...req.body,
         userId,
         filePath: `/uploads/${videoFile.filename}`,
         thumbnailPath: thumbnailPath,
+        categories: categories,
         tags: req.body.tags ? req.body.tags.split(',').map((tag: string) => tag.trim()) : []
       };
       

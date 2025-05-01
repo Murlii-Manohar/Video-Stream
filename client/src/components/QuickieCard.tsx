@@ -31,21 +31,19 @@ export function QuickieCard({ id, title, thumbnailPath, views, duration }: Quick
 
   return (
     <div className="flex-shrink-0 w-40 md:w-60">
-      <Link href={`/watch/${id}?quickie=true`}>
-        <a>
-          <div className="relative rounded-lg overflow-hidden aspect-[9/16] mb-2">
-            <img 
-              src={thumbnailPath} 
-              alt={title} 
-              className="w-full h-full object-cover"
-            />
-            <span className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white px-1 rounded text-sm">
-              {formatDuration(duration)}
-            </span>
-          </div>
-          <h4 className="font-medium line-clamp-2 text-sm">{title}</h4>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{formatViews(views)} views</p>
-        </a>
+      <Link href={`/watch/${id}?quickie=true`} className="block">
+        <div className="relative rounded-lg overflow-hidden aspect-[9/16] mb-2">
+          <img 
+            src={thumbnailPath} 
+            alt={title} 
+            className="w-full h-full object-cover"
+          />
+          <span className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white px-1 rounded text-sm">
+            {formatDuration(duration)}
+          </span>
+        </div>
+        <h4 className="font-medium line-clamp-2 text-sm">{title}</h4>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{formatViews(views)} views</p>
       </Link>
     </div>
   );
@@ -72,21 +70,19 @@ export function QuickieCardGrid({ id, title, thumbnailPath, views, duration }: Q
 
   return (
     <div className="flex flex-col">
-      <Link href={`/watch/${id}?quickie=true`}>
-        <a>
-          <div className="relative rounded-lg overflow-hidden aspect-[9/16] mb-2">
-            <img 
-              src={thumbnailPath} 
-              alt={title} 
-              className="w-full h-full object-cover"
-            />
-            <span className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white px-1 rounded text-sm">
-              {formatDuration(duration)}
-            </span>
-          </div>
-          <h4 className="font-medium line-clamp-2 text-sm">{title}</h4>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{formatViews(views)} views</p>
-        </a>
+      <Link href={`/watch/${id}?quickie=true`} className="block">
+        <div className="relative rounded-lg overflow-hidden aspect-[9/16] mb-2">
+          <img 
+            src={thumbnailPath} 
+            alt={title} 
+            className="w-full h-full object-cover"
+          />
+          <span className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white px-1 rounded text-sm">
+            {formatDuration(duration)}
+          </span>
+        </div>
+        <h4 className="font-medium line-clamp-2 text-sm">{title}</h4>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{formatViews(views)} views</p>
       </Link>
     </div>
   );
