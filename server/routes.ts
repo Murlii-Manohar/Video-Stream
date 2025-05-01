@@ -110,6 +110,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     next();
   };
+  
+  // Admin middleware
+  const requireAdmin = async (req: Request, res: Response, next: any) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    
+    // Fetch the user to check if they're an admin
+    const user = await storage.getUser(req.session.userId);
+    if (!user || !user.isAdmin) {
+      return res.status(403).json({ message: 'Forbidden: Admin access required' });
+    }
+    
+    next();
+  };
 
   // Serve uploaded files
   app.use('/uploads', express.static(storage_dir));
@@ -807,6 +822,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('Get dashboard stats error:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
+
+  // Admin Routes
+  app.get('/api/admin/users', requireAdmin, async (req, res) => {
+    try {
+      // Get all users
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      console.error('Get admin users error:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
+
+  app.get('/api/admin/videos', requireAdmin, async (req, res) => {
+    try {
+      // Get all videos with user info
+      const videos = await storage.getVideos(100, 0);
+      const videosWithCreator = await Promise.all(videos.map(async (video) => {
+        const creator = await storage.getUser(video.userId);
+        return {
+          ...video,
+          creator: creator ? {
+            id: creator.id,
+            username: creator.username,
+            displayName: creator.displayName,
+            profileImage: creator.profileImage
+          } : null
+        };
+      }));
+      
+      res.json(videosWithCreator);
+    } catch (error) {
+      console.error('Get admin videos error:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
+
+  app.post('/api/admin/users/:id/ban', requireAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const { isBanned } = req.body;
+      
+      const user = await storage.updateUser(userId, { isBanned });
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
+      res.json(user);
+    } catch (error) {
+      console.error('Ban user error:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
+
+  app.post('/api/admin/users/:id/make-admin', requireAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const { isAdmin } = req.body;
+      
+      const user = await storage.updateUser(userId, { isAdmin });
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
+      res.json(user);
+    } catch (error) {
+      console.error('Make admin error:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
+
+  app.delete('/api/admin/videos/:id', requireAdmin, async (req, res) => {
+    try {
+      const videoId = parseInt(req.params.id);
+      
+      const video = await storage.getVideo(videoId);
+      if (!video) {
+        return res.status(404).json({ message: 'Video not found' });
+      }
+      
+      // Delete the video file
+      if (video.filePath) {
+        const filePath = path.join(process.cwd(), video.filePath.replace('/uploads/', ''));
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      }
+      
+      // Delete the thumbnail file
+      if (video.thumbnailPath) {
+        const thumbnailPath = path.join(process.cwd(), video.thumbnailPath.replace('/uploads/', ''));
+        if (fs.existsSync(thumbnailPath)) {
+          fs.unlinkSync(thumbnailPath);
+        }
+      }
+      
+      // Delete the video from DB
+      await storage.deleteVideo(videoId);
+      
+      res.json({ message: 'Video deleted successfully' });
+    } catch (error) {
+      console.error('Delete video error:', error);
       res.status(500).json({ message: 'Server error' });
     }
   });
