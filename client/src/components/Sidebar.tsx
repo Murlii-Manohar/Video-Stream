@@ -10,7 +10,8 @@ import {
   HeartIcon,
   BookmarkIcon,
   ChevronDownIcon,
-  TagIcon
+  TagIcon,
+  ShieldIcon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -140,6 +141,13 @@ export function Sidebar({ isOpen }: SidebarProps) {
                 icon={<BookmarkIcon className="mr-3 h-5 w-5" />} 
                 label="Bookmarks" 
               />
+              {user.isAdmin && (
+                <NavItem 
+                  href="/admin" 
+                  icon={<ShieldIcon className="mr-3 h-5 w-5" />} 
+                  label="Admin Panel" 
+                />
+              )}
             </ul>
           </div>
         )}

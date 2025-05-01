@@ -12,6 +12,7 @@ export const users = pgTable("users", {
   profileImage: text("profile_image"),
   bio: text("bio"),
   isAdmin: boolean("is_admin").default(false),
+  isBanned: boolean("is_banned").default(false),
   subscriberCount: integer("subscriber_count").default(0),
   isVerified: boolean("is_verified").default(false),
 });
@@ -83,6 +84,7 @@ export const videoHistory = pgTable("video_history", {
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   isAdmin: true,
+  isBanned: true,
   subscriberCount: true,
   isVerified: true,
 });

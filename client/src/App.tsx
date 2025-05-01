@@ -14,6 +14,22 @@ import Watch from "@/pages/Watch";
 import Quickies from "@/pages/Quickies";
 import MyChannel from "@/pages/MyChannel";
 import Upload from "@/pages/Upload";
+import AdminPanel from "@/pages/AdminPanel";
+import { useAuth } from "@/context/AuthContext";
+
+function ProtectedRoute({ component: Component, adminOnly = false, ...rest }: any) {
+  const { user } = useAuth();
+  
+  if (!user) {
+    return <Route {...rest} component={() => <NotFound />} />;
+  }
+  
+  if (adminOnly && !user.isAdmin) {
+    return <Route {...rest} component={() => <NotFound />} />;
+  }
+  
+  return <Route {...rest} component={Component} />;
+}
 
 function Router() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -30,9 +46,10 @@ function Router() {
             <Route path="/" component={Home} />
             <Route path="/watch/:id" component={Watch} />
             <Route path="/quickies" component={Quickies} />
-            <Route path="/my-channel" component={MyChannel} />
+            <ProtectedRoute path="/my-channel" component={MyChannel} />
             <Route path="/category/:categorySlug" component={Home} />
-            <Route path="/upload" component={Upload} />
+            <ProtectedRoute path="/upload" component={Upload} />
+            <ProtectedRoute path="/admin" component={AdminPanel} adminOnly={true} />
             {/* Fallback to 404 */}
             <Route component={NotFound} />
           </Switch>
