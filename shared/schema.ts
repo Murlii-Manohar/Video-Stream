@@ -13,6 +13,7 @@ export const users = pgTable("users", {
   bio: text("bio"),
   isAdmin: boolean("is_admin").default(false),
   subscriberCount: integer("subscriber_count").default(0),
+  isVerified: boolean("is_verified").default(false),
 });
 
 // Channels table
@@ -83,6 +84,7 @@ export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   isAdmin: true,
   subscriberCount: true,
+  isVerified: true,
 });
 
 export const insertChannelSchema = createInsertSchema(channels).omit({
@@ -96,6 +98,15 @@ export const insertVideoSchema = createInsertSchema(videos).omit({
   likes: true,
   dislikes: true,
   createdAt: true,
+}).refine((data) => {
+  // If it's a quickie, duration must be less than or equal to 120 seconds (2 minutes)
+  if (data.isQuickie && data.duration && data.duration > 120) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Quickies must be 2 minutes or less",
+  path: ["duration"]
 });
 
 export const insertCommentSchema = createInsertSchema(comments).omit({
@@ -132,11 +143,23 @@ export const registerSchema = insertUserSchema.extend({
   path: ["confirmPassword"],
 });
 
+// Email verification schemas
+export const sendVerificationSchema = z.object({
+  email: z.string().email(),
+});
+
+export const verifyEmailSchema = z.object({
+  email: z.string().email(),
+  code: z.string().length(6),
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type LoginUser = z.infer<typeof loginSchema>;
 export type RegisterUser = z.infer<typeof registerSchema>;
+export type SendVerification = z.infer<typeof sendVerificationSchema>;
+export type VerifyEmail = z.infer<typeof verifyEmailSchema>;
 
 export type Channel = typeof channels.$inferSelect;
 export type InsertChannel = z.infer<typeof insertChannelSchema>;
