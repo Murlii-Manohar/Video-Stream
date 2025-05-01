@@ -57,7 +57,9 @@ import {
   MoreVertical,
   ShieldIcon,
   UserCheckIcon,
-  Flag
+  Flag,
+  Check as CheckIcon,
+  Loader2
 } from "lucide-react";
 
 export default function AdminPanel() {
@@ -89,6 +91,28 @@ export default function AdminPanel() {
   const { data: reports = [], isLoading: reportsLoading } = useQuery({
     queryKey: ['/api/admin/reports'],
     enabled: !!user?.isAdmin,
+  });
+  
+  // Resolve report mutation
+  const resolveReportMutation = useMutation({
+    mutationFn: async (reportId: number) => {
+      const response = await apiRequest("POST", `/api/admin/reports/${reportId}/resolve`);
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/reports'] });
+      toast({
+        title: "Success",
+        description: "Report resolved successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to resolve report",
+        variant: "destructive",
+      });
+    },
   });
 
   // Delete video mutation
@@ -548,19 +572,26 @@ export default function AdminPanel() {
                       <EyeIcon className="mr-2 h-4 w-4" />
                       View Content
                     </Button>
-                    <Button 
-                      variant="default" 
-                      size="sm"
-                      onClick={() => {
-                        // Mark as resolved
-                        toast({
-                          title: "Report Resolved",
-                          description: "The report has been marked as resolved"
-                        });
-                      }}
-                    >
-                      Resolve
-                    </Button>
+                    {report.status === 'pending' && (
+                      <Button 
+                        variant="default" 
+                        size="sm"
+                        onClick={() => resolveReportMutation.mutate(report.id)}
+                        disabled={resolveReportMutation.isPending}
+                      >
+                        {resolveReportMutation.isPending ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          <>
+                            <CheckIcon className="mr-2 h-4 w-4" />
+                            Resolve
+                          </>
+                        )}
+                      </Button>
+                    )}
                   </CardFooter>
                 </Card>
               ))}
