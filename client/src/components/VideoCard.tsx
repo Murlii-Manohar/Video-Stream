@@ -20,9 +20,10 @@ interface VideoProps {
   duration: number;
   createdAt: string | Date;
   creator: VideoCreator;
+  categories?: string[];
 }
 
-export function VideoCard({ id, title, thumbnailPath, views, duration, createdAt, creator }: VideoProps) {
+export function VideoCard({ id, title, thumbnailPath, views, duration, createdAt, creator, categories = [] }: VideoProps) {
   // Format the duration as mm:ss or hh:mm:ss
   const formatDuration = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -95,6 +96,23 @@ export function VideoCard({ id, title, thumbnailPath, views, duration, createdAt
             <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
               {formatViews(views)} views • {formatDate(createdAt)}
             </div>
+            {categories.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {categories.slice(0, 3).map((category, index) => (
+                  <span 
+                    key={index} 
+                    className="text-[10px] px-1.5 py-0.5 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-sm"
+                  >
+                    {category}
+                  </span>
+                ))}
+                {categories.length > 3 && (
+                  <span className="text-[10px] px-1.5 py-0.5 text-gray-500 dark:text-gray-400">
+                    +{categories.length - 3} more
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </CardContent>

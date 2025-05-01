@@ -1,11 +1,14 @@
-import React from "react";
+import React, { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { VideoCard } from "@/components/VideoCard";
 import { QuickieCard } from "@/components/QuickieCard";
+import CategoryFilter from "@/components/CategoryFilter";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Home() {
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  
   // Fetch featured/recent videos
   const { data: recentVideos, isLoading: isLoadingRecent } = useQuery({
     queryKey: ["/api/videos/recent"],
@@ -20,6 +23,42 @@ export default function Home() {
   const { data: quickies, isLoading: isLoadingQuickies } = useQuery({
     queryKey: ["/api/videos/quickies"],
   });
+  
+  // Extract all unique categories from videos
+  const allCategories = useMemo(() => {
+    const categorySet = new Set<string>();
+    
+    // Add categories from recent videos
+    recentVideos?.forEach((video: any) => {
+      if (video.categories && Array.isArray(video.categories)) {
+        video.categories.forEach((category: string) => categorySet.add(category));
+      }
+    });
+    
+    // Add categories from trending videos
+    trendingVideos?.forEach((video: any) => {
+      if (video.categories && Array.isArray(video.categories)) {
+        video.categories.forEach((category: string) => categorySet.add(category));
+      }
+    });
+    
+    return Array.from(categorySet).sort();
+  }, [recentVideos, trendingVideos]);
+  
+  // Filter videos by selected category
+  const filteredRecentVideos = useMemo(() => {
+    if (!selectedCategory) return recentVideos;
+    return recentVideos?.filter((video: any) => 
+      video.categories && video.categories.includes(selectedCategory)
+    );
+  }, [recentVideos, selectedCategory]);
+  
+  const filteredTrendingVideos = useMemo(() => {
+    if (!selectedCategory) return trendingVideos;
+    return trendingVideos?.filter((video: any) => 
+      video.categories && video.categories.includes(selectedCategory)
+    );
+  }, [trendingVideos, selectedCategory]);
 
   // Loading skeleton for video cards
   const VideoSkeleton = () => (
