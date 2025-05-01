@@ -32,6 +32,8 @@ function Router() {
             <Route path="/watch/:id" component={Watch} />
             <Route path="/quickies" component={Quickies} />
             <Route path="/dashboard" component={Dashboard} />
+            <Route path="/channel-dashboard" component={ChannelDashboard} />
+            <Route path="/upload" component={Upload} />
             {/* Fallback to 404 */}
             <Route component={NotFound} />
           </Switch>

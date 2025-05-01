@@ -15,7 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Loader2, Upload, Image, Video } from "lucide-react";
+import { Loader2, UploadIcon, ImageIcon, Video } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 
@@ -257,7 +257,7 @@ export default function Upload() {
                     variant="secondary" 
                     onClick={() => videoFileRef.current?.click()}
                   >
-                    <Upload className="h-4 w-4 mr-2" /> Select Video
+                    <UploadIcon className="h-4 w-4 mr-2" /> Select Video
                   </Button>
                   <input
                     ref={videoFileRef}
@@ -305,14 +305,14 @@ export default function Upload() {
             <div className={`border-2 border-dashed rounded-lg p-6 text-center ${thumbnailFile ? 'border-primary' : 'border-muted-foreground/25'}`}>
               {!thumbnailFile ? (
                 <div>
-                  <Image className="h-12 w-12 mx-auto mb-2 text-muted-foreground" />
+                  <ImageIcon className="h-12 w-12 mx-auto mb-2 text-muted-foreground" />
                   <p className="text-sm text-muted-foreground mb-2">Upload a custom thumbnail for your video</p>
                   <Button 
                     type="button" 
                     variant="secondary" 
                     onClick={() => thumbnailFileRef.current?.click()}
                   >
-                    <Upload className="h-4 w-4 mr-2" /> Select Image
+                    <UploadIcon className="h-4 w-4 mr-2" /> Select Image
                   </Button>
                   <input
                     ref={thumbnailFileRef}

@@ -1,4 +1,4 @@
-import express, { type Express, Request, Response } from "express";
+import express, { type Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { 
@@ -7,7 +7,9 @@ import {
   insertVideoSchema, 
   insertCommentSchema, 
   insertSubscriptionSchema,
-  insertLikedVideoSchema
+  insertLikedVideoSchema,
+  sendVerificationSchema,
+  verifyEmailSchema
 } from "@shared/schema";
 import fs from "fs";
 import path from "path";
@@ -15,9 +17,13 @@ import multer from "multer";
 import { ZodError } from "zod";
 import session from "express-session";
 import MemoryStore from "memorystore";
+import { initializeEmailService, sendVerificationEmail, verifyCode } from "./services/emailService";
 
 // Create a memory store for sessions
 const SessionStore = MemoryStore(session);
+
+// Initialize email service
+initializeEmailService();
 
 // Setup file storage for video uploads
 const storage_dir = path.resolve(process.cwd(), "uploaded_files");
@@ -91,6 +97,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Serve uploaded files
   app.use('/uploads', express.static(storage_dir));
+
+  // Email Verification Routes
+  app.post('/api/auth/send-verification', handleValidation(sendVerificationSchema), async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      // Check if user with email already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ message: 'User with this email already exists' });
+      }
+      
+      // Send verification code
+      const verificationCode = await sendVerificationEmail(email);
+      
+      res.json({ message: 'Verification code sent successfully' });
+    } catch (error) {
+      console.error('Send verification error:', error);
+      res.status(500).json({ message: 'Failed to send verification code' });
+    }
+  });
+  
+  app.post('/api/auth/verify-email', handleValidation(verifyEmailSchema), async (req, res) => {
+    try {
+      const { email, code } = req.body;
+      
+      // Verify the code
+      const isVerified = verifyCode(email, code);
+      
+      if (!isVerified) {
+        return res.status(400).json({ message: 'Invalid or expired verification code' });
+      }
+      
+      res.json({ message: 'Email verified successfully', verified: true });
+    } catch (error) {
+      console.error('Verify email error:', error);
+      res.status(500).json({ message: 'Failed to verify email' });
+    }
+  });
 
   // Authentication Routes
   app.post('/api/auth/register', handleValidation(registerSchema), async (req, res) => {
