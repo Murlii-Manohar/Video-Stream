@@ -399,20 +399,24 @@ export default function UploadForm({ open, onOpenChange }: UploadFormProps) {
                       <FormDescription>
                         Select one or more categories that apply to your video
                       </FormDescription>
-                      <div className="grid grid-cols-2 gap-2 mt-2">
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2 max-h-[200px] overflow-y-auto pr-1">
                         {[
-                          "Amateur",
+                          "Teen", 
+                          "MILF", 
+                          "Stepmom", 
+                          "Ebony", 
+                          "Black", 
+                          "Asian", 
+                          "Indian", 
+                          "Amateur", 
                           "Professional",
-                          "Verified Models",
-                          "Couples",
-                          "Solo",
-                          "MILF",
-                          "Stepmom",
-                          "Teen",
-                          "Anal",
-                          "Threesome",
+                          "Verified Models", 
+                          "Anal", 
+                          "Threesome", 
+                          "Lesbian",
                           "Cheating",
-                          "Lesbian"
+                          "Couples",
+                          "Solo"
                         ].map((category) => (
                           <FormItem
                             key={category}

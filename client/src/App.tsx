@@ -12,8 +12,7 @@ import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
 import Watch from "@/pages/Watch";
 import Quickies from "@/pages/Quickies";
-import Dashboard from "@/pages/Dashboard";
-import ChannelDashboard from "@/pages/ChannelDashboard";
+import MyChannel from "@/pages/MyChannel";
 import Upload from "@/pages/Upload";
 
 function Router() {
@@ -31,8 +30,8 @@ function Router() {
             <Route path="/" component={Home} />
             <Route path="/watch/:id" component={Watch} />
             <Route path="/quickies" component={Quickies} />
-            <Route path="/dashboard" component={Dashboard} />
-            <Route path="/channel-dashboard" component={ChannelDashboard} />
+            <Route path="/my-channel" component={MyChannel} />
+            <Route path="/category/:categorySlug" component={Home} />
             <Route path="/upload" component={Upload} />
             {/* Fallback to 404 */}
             <Route component={NotFound} />

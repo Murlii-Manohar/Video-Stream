@@ -7,20 +7,47 @@ import {
   CompassIcon, 
   ClockIcon,
   UserIcon,
-  LayoutDashboardIcon,
   HeartIcon,
-  BookmarkIcon
+  BookmarkIcon,
+  ChevronDownIcon,
+  TagIcon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 interface SidebarProps {
   isOpen: boolean;
 }
 
+// Adult content categories
+const ADULT_CATEGORIES = [
+  "Teen", 
+  "MILF", 
+  "Stepmom", 
+  "Ebony", 
+  "Black", 
+  "Asian", 
+  "Indian", 
+  "Amateur", 
+  "Professional", 
+  "Verified Models", 
+  "Anal", 
+  "Threesome", 
+  "Lesbian",
+  "Cheating",
+  "Couples",
+  "Solo"
+];
+
 export function Sidebar({ isOpen }: SidebarProps) {
   const { user } = useAuth();
   const [location, navigate] = useLocation();
+  const [categoriesOpen, setCategoriesOpen] = React.useState(false);
 
   // Fetch user subscriptions if logged in
   const { data: subscriptions } = useQuery({
@@ -43,6 +70,22 @@ export function Sidebar({ isOpen }: SidebarProps) {
       </div>
     </li>
   );
+
+  // Helper for categories
+  const CategoryItem = ({ category }: { category: string }) => {
+    const slug = category.toLowerCase().replace(/\s+/g, '-');
+    return (
+      <li>
+        <div 
+          className="flex items-center px-4 py-2 rounded-lg hover:bg-muted cursor-pointer"
+          onClick={() => navigate(`/category/${slug}`)}
+        >
+          <TagIcon className="mr-3 h-4 w-4" />
+          <span>{category}</span>
+        </div>
+      </li>
+    );
+  };
 
   return (
     <aside 
@@ -83,19 +126,9 @@ export function Sidebar({ isOpen }: SidebarProps) {
             <h3 className="font-medium text-sm uppercase text-muted-foreground mb-2">Your Account</h3>
             <ul className="space-y-1">
               <NavItem 
-                href={`/channel/${user.id}`} 
+                href="/my-channel" 
                 icon={<UserIcon className="mr-3 h-5 w-5" />} 
-                label="Your Channel" 
-              />
-              <NavItem 
-                href="/dashboard" 
-                icon={<LayoutDashboardIcon className="mr-3 h-5 w-5" />} 
-                label="Dashboard" 
-              />
-              <NavItem 
-                href="/channel-dashboard" 
-                icon={<LayoutDashboardIcon className="mr-3 h-5 w-5" />} 
-                label="Channel Dashboard" 
+                label="My Channel" 
               />
               <NavItem 
                 href="/liked" 
@@ -112,22 +145,28 @@ export function Sidebar({ isOpen }: SidebarProps) {
         )}
         
         <div className="mb-6">
-          <h3 className="font-medium text-sm uppercase text-muted-foreground mb-2">Categories</h3>
-          <ul className="space-y-1">
-            {["Amateur", "Professional", "Verified Models", "Trending", "Most Viewed"].map((category) => {
-              const slug = category.toLowerCase().replace(/\s+/g, '-');
-              return (
-                <li key={slug}>
-                  <div 
-                    className="flex items-center px-4 py-2 rounded-lg hover:bg-muted cursor-pointer"
-                    onClick={() => navigate(`/category/${slug}`)}
-                  >
-                    <span>{category}</span>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+          <Collapsible
+            open={categoriesOpen}
+            onOpenChange={setCategoriesOpen}
+            className="w-full"
+          >
+            <CollapsibleTrigger className="flex items-center justify-between w-full px-2 py-1 text-sm font-medium">
+              <h3 className="font-medium text-sm uppercase text-muted-foreground">Categories</h3>
+              <ChevronDownIcon
+                className={cn(
+                  "h-4 w-4 text-muted-foreground transition-transform",
+                  categoriesOpen ? "transform rotate-180" : ""
+                )}
+              />
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <ul className="space-y-1 mt-2 max-h-[300px] overflow-y-auto">
+                {ADULT_CATEGORIES.map((category) => (
+                  <CategoryItem key={category} category={category} />
+                ))}
+              </ul>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
         
         {user && subscriptions && Array.isArray(subscriptions) && subscriptions.length > 0 && (
