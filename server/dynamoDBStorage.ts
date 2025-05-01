@@ -36,6 +36,9 @@ const TABLES = {
 };
 
 export class DynamoDBStorage implements IStorage {
+  // Method declarations for missing methods that are required by IStorage interface
+  async getAllUsers(): Promise<User[]>;
+  async deleteVideo(id: number): Promise<boolean>;
   private client: DynamoDBClient;
   private docClient: DynamoDBDocumentClient;
   private initialized: boolean = false;
@@ -1052,6 +1055,105 @@ export class DynamoDBStorage implements IStorage {
 
     const isPasswordValid = this.comparePassword(password, user.password);
     return isPasswordValid ? user : undefined;
+  }
+  
+  // Implementation of missing methods declared at the class level
+  async getAllUsers(): Promise<User[]> {
+    await this.initialize();
+    
+    try {
+      const command = new ScanCommand({
+        TableName: TABLES.USERS
+      });
+      
+      const response = await this.docClient.send(command);
+      return response.Items as User[] || [];
+    } catch (error) {
+      console.error('Error getting all users from DynamoDB:', error);
+      return [];
+    }
+  }
+  
+  async deleteVideo(id: number): Promise<boolean> {
+    await this.initialize();
+    
+    try {
+      // First, get the video to know the file paths
+      const video = await this.getVideo(id);
+      if (!video) {
+        return false;
+      }
+      
+      // Delete the video entry from DynamoDB
+      const command = new DeleteCommand({
+        TableName: TABLES.VIDEOS,
+        Key: { id }
+      });
+      
+      await this.docClient.send(command);
+      
+      // Delete related comments
+      const commentsCommand = new ScanCommand({
+        TableName: TABLES.COMMENTS,
+        FilterExpression: 'videoId = :videoId',
+        ExpressionAttributeValues: {
+          ':videoId': id
+        }
+      });
+      
+      const commentsResponse = await this.docClient.send(commentsCommand);
+      const comments = commentsResponse.Items || [];
+      
+      for (const comment of comments) {
+        await this.docClient.send(new DeleteCommand({
+          TableName: TABLES.COMMENTS,
+          Key: { id: comment.id }
+        }));
+      }
+      
+      // Delete related likes
+      const likesCommand = new ScanCommand({
+        TableName: TABLES.LIKED_VIDEOS,
+        FilterExpression: 'videoId = :videoId',
+        ExpressionAttributeValues: {
+          ':videoId': id
+        }
+      });
+      
+      const likesResponse = await this.docClient.send(likesCommand);
+      const likes = likesResponse.Items || [];
+      
+      for (const like of likes) {
+        await this.docClient.send(new DeleteCommand({
+          TableName: TABLES.LIKED_VIDEOS,
+          Key: { id: like.id }
+        }));
+      }
+      
+      // Delete related history
+      const historyCommand = new ScanCommand({
+        TableName: TABLES.VIDEO_HISTORY,
+        FilterExpression: 'videoId = :videoId',
+        ExpressionAttributeValues: {
+          ':videoId': id
+        }
+      });
+      
+      const historyResponse = await this.docClient.send(historyCommand);
+      const history = historyResponse.Items || [];
+      
+      for (const item of history) {
+        await this.docClient.send(new DeleteCommand({
+          TableName: TABLES.VIDEO_HISTORY,
+          Key: { id: item.id }
+        }));
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error deleting video from DynamoDB:', error);
+      return false;
+    }
   }
 }
 

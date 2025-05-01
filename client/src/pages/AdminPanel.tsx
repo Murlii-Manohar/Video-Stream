@@ -137,10 +137,22 @@ export default function AdminPanel() {
     },
   });
 
-  // Ban user mutation
+  // User status update mutation
   const updateUserStatusMutation = useMutation({
     mutationFn: async ({ userId, action }: { userId: number, action: string }) => {
-      const response = await apiRequest("PATCH", `/api/admin/users/${userId}/${action}`);
+      // Map client action to API endpoint
+      const endpoint = action === 'ban' ? '/api/admin/users/:id/ban' : 
+                      action === 'unban' ? '/api/admin/users/:id/ban' :
+                      action === 'promote' ? '/api/admin/users/:id/make-admin' :
+                      '/api/admin/users/:id/make-admin';
+                      
+      // Determine the payload based on action
+      const payload = action === 'ban' ? { isBanned: true } :
+                     action === 'unban' ? { isBanned: false } :
+                     action === 'promote' ? { isAdmin: true } :
+                     { isAdmin: false };
+                     
+      const response = await apiRequest("POST", endpoint.replace(':id', userId.toString()), payload);
       return await response.json();
     },
     onSuccess: () => {
@@ -446,7 +458,11 @@ export default function AdminPanel() {
                             
                             <DropdownMenuItem
                               onClick={() => {
-                                setContentToDelete({ id: video.id, type: 'video', title: video.title });
+                                setContentToDelete({
+                                  id: video.id,
+                                  title: video.title,
+                                  type: 'video'
+                                });
                                 setIsContentDeleteOpen(true);
                               }}
                               className="text-red-500"
