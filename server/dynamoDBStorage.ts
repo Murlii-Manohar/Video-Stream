@@ -484,6 +484,45 @@ export class DynamoDBStorage implements IStorage {
       throw error;
     }
   }
+  
+  async updateChannel(id: number, channelData: Partial<Channel>): Promise<Channel | undefined> {
+    try {
+      // First, get the existing channel
+      const response = await this.docClient.send(
+        new GetCommand({
+          TableName: TABLES.CHANNELS,
+          Key: { id }
+        })
+      );
+      
+      if (!response.Item) {
+        return undefined;
+      }
+      
+      const existingChannel = response.Item as Channel;
+      
+      // Merge updates
+      const updatedChannel = {
+        ...existingChannel,
+        ...channelData,
+        // Always update the updatedAt timestamp
+        updatedAt: new Date().toISOString()
+      };
+      
+      // Save the updated channel
+      await this.docClient.send(
+        new PutCommand({
+          TableName: TABLES.CHANNELS,
+          Item: updatedChannel
+        })
+      );
+      
+      return updatedChannel;
+    } catch (error) {
+      console.error(`Error updating channel with id ${id}:`, error);
+      throw error;
+    }
+  }
 
   // Video methods
   async getVideo(id: number): Promise<Video | undefined> {

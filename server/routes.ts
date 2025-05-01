@@ -509,6 +509,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Channel Routes
+  // Get user's channels
+  app.get('/api/channels/user', requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId as number;
+      
+      const channels = await storage.getChannelsByUser(userId);
+      res.json(channels);
+    } catch (error) {
+      console.error('Get user channels error:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
+
+  // Get specific channel
+  app.get('/api/channels/:channelId', async (req, res) => {
+    try {
+      const channelId = parseInt(req.params.channelId);
+      
+      const channel = await storage.getChannel(channelId);
+      if (!channel) {
+        return res.status(404).json({ message: 'Channel not found' });
+      }
+      
+      const user = await storage.getUser(channel.userId);
+      
+      res.json({
+        ...channel,
+        user: user ? {
+          id: user.id,
+          username: user.username,
+          displayName: user.displayName,
+          profileImage: user.profileImage,
+          subscriberCount: user.subscriberCount
+        } : null
+      });
+    } catch (error) {
+      console.error('Get channel error:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
+  
+  // Get channel by user ID (for backward compatibility)
   app.get('/api/channels/:userId', async (req, res) => {
     try {
       const userId = parseInt(req.params.userId);
@@ -532,6 +574,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('Get channel error:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
+  
+  // Create a new channel
+  app.post('/api/channels', requireAuth, upload.single('bannerImage'), async (req, res) => {
+    try {
+      const userId = req.session.userId as number;
+      
+      // Handle banner image upload
+      let bannerImagePath = '';
+      if (req.file) {
+        bannerImagePath = `/uploads/${req.file.filename}`;
+      } else if (req.body.bannerImageUrl) {
+        bannerImagePath = req.body.bannerImageUrl;
+      }
+      
+      const channelData = {
+        userId: userId,
+        name: req.body.name,
+        description: req.body.description || null,
+        bannerImage: bannerImagePath || null
+      };
+      
+      const channel = await storage.createChannel(channelData);
+      
+      res.status(201).json(channel);
+    } catch (error) {
+      console.error('Create channel error:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
+  
+  // Update channel
+  app.patch('/api/channels/:channelId', requireAuth, upload.single('bannerImage'), async (req, res) => {
+    try {
+      const userId = req.session.userId as number;
+      const channelId = parseInt(req.params.channelId);
+      
+      // Verify channel ownership
+      const channel = await storage.getChannel(channelId);
+      if (!channel) {
+        return res.status(404).json({ message: 'Channel not found' });
+      }
+      
+      if (channel.userId !== userId) {
+        return res.status(403).json({ message: 'Not authorized to update this channel' });
+      }
+      
+      // Handle banner image upload
+      let updateData: any = {
+        name: req.body.name,
+        description: req.body.description || null
+      };
+      
+      if (req.file) {
+        updateData.bannerImage = `/uploads/${req.file.filename}`;
+      } else if (req.body.bannerImageUrl) {
+        updateData.bannerImage = req.body.bannerImageUrl;
+      }
+      
+      const updatedChannel = await storage.updateChannel(channelId, updateData);
+      
+      res.json(updatedChannel);
+    } catch (error) {
+      console.error('Update channel error:', error);
       res.status(500).json({ message: 'Server error' });
     }
   });

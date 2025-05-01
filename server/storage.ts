@@ -22,6 +22,7 @@ export interface IStorage {
   getChannel(id: number): Promise<Channel | undefined>;
   getChannelsByUser(userId: number): Promise<Channel[]>;
   createChannel(channel: InsertChannel): Promise<Channel>;
+  updateChannel(id: number, channelData: Partial<Channel>): Promise<Channel | undefined>;
   
   // Video methods
   getVideo(id: number): Promise<Video | undefined>;
@@ -177,6 +178,15 @@ export class MemStorage implements IStorage {
     };
     this.channels.set(id, channel);
     return channel;
+  }
+
+  async updateChannel(id: number, channelData: Partial<Channel>): Promise<Channel | undefined> {
+    const channel = await this.getChannel(id);
+    if (!channel) return undefined;
+    
+    const updatedChannel = { ...channel, ...channelData };
+    this.channels.set(id, updatedChannel);
+    return updatedChannel;
   }
   
   // Video methods
