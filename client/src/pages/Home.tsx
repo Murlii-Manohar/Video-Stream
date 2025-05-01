@@ -79,8 +79,8 @@ export default function Home() {
       <section className="mb-10">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-poppins font-bold">Quickies</h2>
-          <Link href="/quickies">
-            <a className="text-primary hover:underline font-medium">See all</a>
+          <Link href="/quickies" className="text-primary hover:underline font-medium">
+            See all
           </Link>
         </div>
         

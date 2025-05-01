@@ -58,16 +58,43 @@ export class DynamoDBStorage implements IStorage {
     if (this.initialized) return;
 
     try {
-      // Check if tables exist, create them if they don't
-      const { TableNames } = await this.client.send(new ListTablesCommand({}));
+      // Create a promise with timeout for listing tables
+      const listTablesPromise = Promise.race([
+        this.client.send(new ListTablesCommand({})),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("DynamoDB ListTables operation timed out after 5 seconds")), 5000)
+        )
+      ]);
+
+      // Get table names with timeout 
+      const { TableNames } = await listTablesPromise as any;
       
       // Create tables that don't exist
       const tablesToCreate = Object.values(TABLES).filter(tableName => 
         !TableNames?.includes(tableName)
       );
 
-      for (const tableName of tablesToCreate) {
-        await this.createTable(tableName);
+      // Only create first table during initialization, the rest can be created asynchronously
+      if (tablesToCreate.length > 0) {
+        console.log(`Need to create ${tablesToCreate.length} tables: ${tablesToCreate.join(', ')}`);
+        // Only create the first table synchronously to prevent long initialization time
+        if (tablesToCreate.length > 0) {
+          await this.createTable(tablesToCreate[0]);
+          
+          // Create the rest of the tables asynchronously
+          if (tablesToCreate.length > 1) {
+            // Don't wait for this promise
+            (async () => {
+              for (let i = 1; i < tablesToCreate.length; i++) {
+                try {
+                  await this.createTable(tablesToCreate[i]);
+                } catch (error) {
+                  console.error(`Failed to create table ${tablesToCreate[i]} asynchronously:`, error);
+                }
+              }
+            })();
+          }
+        }
       }
 
       this.initialized = true;
@@ -82,21 +109,26 @@ export class DynamoDBStorage implements IStorage {
     const tableParams = this.getTableParams(tableName);
     
     try {
-      await this.client.send(new CreateTableCommand(tableParams));
+      // Create table with timeout to avoid hanging
+      const createTablePromise = Promise.race([
+        this.client.send(new CreateTableCommand(tableParams)),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error(`Create table operation for ${tableName} timed out after 3 seconds`)), 3000)
+        )
+      ]);
+    
+      await createTablePromise;
       console.log(`Table ${tableName} created successfully`);
       
-      // Wait for table to be active
-      let tableActive = false;
-      while (!tableActive) {
-        const { Table } = await this.client.send(
-          new DescribeTableCommand({ TableName: tableName })
-        );
-        tableActive = Table?.TableStatus === "ACTIVE";
-        if (!tableActive) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-      }
+      // Don't wait for table to be active - this will happen asynchronously
+      // Just return immediately to prevent blocking startup
+      return;
     } catch (error) {
+      if (error.name === 'ResourceInUseException') {
+        // Table already exists, this is fine
+        console.log(`Table ${tableName} already exists`);
+        return;
+      }
       console.error(`Failed to create table ${tableName}:`, error);
       throw error;
     }

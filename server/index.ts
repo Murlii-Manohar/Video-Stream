@@ -3,6 +3,10 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { storage } from "./storage";
 import { dynamoDBStorage } from "./dynamoDBStorage";
+import dotenv from 'dotenv';
+
+// Load environment variables from .env file
+dotenv.config();
 
 const app = express();
 app.use(express.json());
@@ -42,11 +46,17 @@ app.use((req, res, next) => {
   // Initialize DynamoDB storage if needed
   if (process.env.USE_DYNAMODB === 'true') {
     try {
-      await dynamoDBStorage.initialize();
-      log("DynamoDB storage initialized successfully");
+      log("Attempting to initialize DynamoDB storage...");
+      await dynamoDBStorage.initialize().catch((err) => {
+        log(`Warning: DynamoDB initialization failed: ${err}. Falling back to in-memory storage.`);
+        process.env.USE_DYNAMODB = 'false';
+      });
+      if (process.env.USE_DYNAMODB === 'true') {
+        log("DynamoDB storage initialized successfully");
+      }
     } catch (error) {
-      log(`Failed to initialize DynamoDB storage: ${error}`);
-      process.exit(1);
+      log(`Failed to initialize DynamoDB storage: ${error}. Falling back to in-memory storage.`);
+      process.env.USE_DYNAMODB = 'false';
     }
   }
 
