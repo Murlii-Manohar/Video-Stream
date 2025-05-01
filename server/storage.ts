@@ -34,6 +34,7 @@ export interface IStorage {
   getQuickies(limit?: number): Promise<Video[]>;
   createVideo(video: InsertVideo): Promise<Video>;
   updateVideo(id: number, videoData: Partial<Video>): Promise<Video | undefined>;
+  deleteVideo(id: number): Promise<boolean>;
   incrementVideoViews(id: number): Promise<Video | undefined>;
   
   // Comment methods
@@ -257,6 +258,36 @@ export class MemStorage implements IStorage {
     return updatedVideo;
   }
   
+  async deleteVideo(id: number): Promise<boolean> {
+    const video = await this.getVideo(id);
+    if (!video) return false;
+    
+    // Delete video from storage
+    this.videos.delete(id);
+    
+    // Delete related comments
+    const videoComments = await this.getCommentsByVideo(id);
+    for (const comment of videoComments) {
+      this.comments.delete(comment.id);
+    }
+    
+    // Delete related likes
+    const likedVideos = Array.from(this.likedVideos.values())
+      .filter(like => like.videoId === id);
+    for (const like of likedVideos) {
+      this.likedVideos.delete(like.id);
+    }
+    
+    // Delete from watch history
+    const historyEntries = Array.from(this.videoHistory.values())
+      .filter(history => history.videoId === id);
+    for (const entry of historyEntries) {
+      this.videoHistory.delete(entry.id);
+    }
+    
+    return true;
+  }
+  
   async incrementVideoViews(id: number): Promise<Video | undefined> {
     const video = await this.getVideo(id);
     if (!video) return undefined;
@@ -390,6 +421,19 @@ export class MemStorage implements IStorage {
   
   // Initialize sample data
   private async initializeSampleData() {
+    // Create admin user
+    const adminUser = await this.createUser({
+      username: 'admin',
+      password: '@Manohar596',
+      email: 'm.manohar2003@gmail.com',
+      displayName: 'Site Admin',
+      profileImage: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&w=100&h=100',
+      bio: 'Site administrator',
+    });
+    
+    // Set admin privileges
+    await this.updateUser(adminUser.id, { isAdmin: true });
+    
     // Create sample users
     const user1 = await this.createUser({
       username: 'sophia_luxe',

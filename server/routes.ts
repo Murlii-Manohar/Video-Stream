@@ -219,7 +219,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         username: user.username,
         email: user.email,
         displayName: user.displayName,
-        profileImage: user.profileImage
+        profileImage: user.profileImage,
+        isAdmin: user.isAdmin,
+        isBanned: user.isBanned
       });
     } catch (error) {
       console.error('Login error:', error);
@@ -255,7 +257,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         displayName: user.displayName,
         profileImage: user.profileImage,
         bio: user.bio,
-        subscriberCount: user.subscriberCount
+        subscriberCount: user.subscriberCount,
+        isAdmin: user.isAdmin,
+        isBanned: user.isBanned
       });
     } catch (error) {
       console.error('Get current user error:', error);
