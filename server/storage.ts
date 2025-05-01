@@ -633,4 +633,10 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+import { dynamoDBStorage } from './dynamoDBStorage';
+
+// Determine which storage to use based on environment variables
+const USE_DYNAMODB = process.env.USE_DYNAMODB === 'true';
+
+// Create and export the appropriate storage
+export const storage = USE_DYNAMODB ? dynamoDBStorage : new MemStorage();

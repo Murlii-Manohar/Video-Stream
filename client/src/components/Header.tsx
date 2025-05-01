@@ -90,7 +90,7 @@ export function Header({ toggleSidebar }: HeaderProps) {
               size="icon" 
               className="absolute right-0 top-0 h-full px-4"
             >
-              <SearchIcon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+              <SearchIcon className="h-5 w-5 text-muted-foreground" />
             </Button>
           </form>
         </div>
@@ -113,7 +113,7 @@ export function Header({ toggleSidebar }: HeaderProps) {
           <Button
             variant="ghost"
             size="icon" 
-            className="sm:hidden p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="sm:hidden p-2 rounded-full hover:bg-muted"
             onClick={handleUploadClick}
           >
             <UploadIcon className="h-5 w-5" />
@@ -134,7 +134,7 @@ export function Header({ toggleSidebar }: HeaderProps) {
               <Button
                 variant="ghost" 
                 size="icon" 
-                className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+                className="relative p-2 rounded-full hover:bg-muted"
               >
                 <BellIcon className="h-5 w-5" />
                 <span className="absolute top-0 right-0 w-4 h-4 bg-primary text-white text-xs flex items-center justify-center rounded-full">3</span>

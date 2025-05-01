@@ -1,6 +1,8 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { storage } from "./storage";
+import { dynamoDBStorage } from "./dynamoDBStorage";
 
 const app = express();
 app.use(express.json());
@@ -37,6 +39,17 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Initialize DynamoDB storage if needed
+  if (process.env.USE_DYNAMODB === 'true') {
+    try {
+      await dynamoDBStorage.initialize();
+      log("DynamoDB storage initialized successfully");
+    } catch (error) {
+      log(`Failed to initialize DynamoDB storage: ${error}`);
+      process.exit(1);
+    }
+  }
+
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
