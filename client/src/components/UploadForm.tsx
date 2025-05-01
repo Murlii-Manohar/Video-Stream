@@ -43,7 +43,7 @@ interface UploadFormProps {
 const uploadFormSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters").max(100, "Title cannot exceed 100 characters"),
   description: z.string().max(1000, "Description cannot exceed 1000 characters").optional(),
-  category: z.string().min(1, "Please select a category"),
+  categories: z.array(z.string()).min(1, "Please select at least one category"),
   tags: z.string().optional(),
   isQuickie: z.boolean().default(false),
 });
@@ -64,7 +64,7 @@ export default function UploadForm({ open, onOpenChange }: UploadFormProps) {
     defaultValues: {
       title: "",
       description: "",
-      category: "",
+      categories: [],
       tags: "",
       isQuickie: false,
     },

@@ -53,47 +53,43 @@ export function VideoCard({ id, title, thumbnailPath, views, duration, createdAt
 
   return (
     <Card className="video-card overflow-hidden shadow-md bg-white dark:bg-dark-surface hover:shadow-lg transition-shadow duration-300">
-      <Link href={`/watch/${id}`}>
-        <a className="block relative aspect-video">
-          <img 
-            src={thumbnailPath} 
-            alt={title} 
-            className="w-full h-full object-cover"
-          />
-          <span className="video-duration absolute bottom-2 right-2 bg-black bg-opacity-80 text-white px-1 rounded text-sm">
-            {formatDuration(duration)}
-          </span>
-          <div className="video-actions absolute inset-0 bg-black bg-opacity-50 opacity-0 transition-opacity flex items-center justify-center">
-            <button className="bg-primary text-white rounded-full w-12 h-12 flex items-center justify-center">
-              <PlayIcon className="h-6 w-6" />
-            </button>
-          </div>
-        </a>
+      <Link href={`/watch/${id}`} className="block relative aspect-video">
+        <img 
+          src={thumbnailPath} 
+          alt={title} 
+          className="w-full h-full object-cover"
+        />
+        <span className="video-duration absolute bottom-2 right-2 bg-black bg-opacity-80 text-white px-1 rounded text-sm">
+          {formatDuration(duration)}
+        </span>
+        <div className="video-actions absolute inset-0 bg-black bg-opacity-50 opacity-0 transition-opacity flex items-center justify-center">
+          <button className="bg-primary text-white rounded-full w-12 h-12 flex items-center justify-center">
+            <PlayIcon className="h-6 w-6" />
+          </button>
+        </div>
       </Link>
       <CardContent className="p-3">
         <div className="flex">
-          <Link href={`/channel/${creator.id}`}>
-            <a className="flex-shrink-0">
-              <Avatar className="w-10 h-10 mr-3">
-                <AvatarImage 
-                  src={creator.profileImage} 
-                  alt={creator.displayName || creator.username}
-                />
-                <AvatarFallback className="bg-primary text-white">
-                  {creator.username.substring(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-            </a>
+          <Link href={`/channel/${creator.id}`} className="flex-shrink-0">
+            <Avatar className="w-10 h-10 mr-3">
+              <AvatarImage 
+                src={creator.profileImage} 
+                alt={creator.displayName || creator.username}
+              />
+              <AvatarFallback className="bg-primary text-white">
+                {creator.username.substring(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
           </Link>
           <div>
             <h3 className="font-medium line-clamp-2 text-gray-900 dark:text-gray-100">
-              <Link href={`/watch/${id}`}>
-                <a>{title}</a>
+              <Link href={`/watch/${id}`} className="hover:underline">
+                {title}
               </Link>
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              <Link href={`/channel/${creator.id}`}>
-                <a>{creator.displayName || creator.username}</a>
+              <Link href={`/channel/${creator.id}`} className="hover:underline">
+                {creator.displayName || creator.username}
               </Link>
             </p>
             <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">

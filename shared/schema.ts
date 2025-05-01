@@ -38,7 +38,7 @@ export const videos = pgTable("videos", {
   views: integer("views").default(0),
   likes: integer("likes").default(0),
   dislikes: integer("dislikes").default(0),
-  category: text("category"),
+  categories: text("categories").array(),
   tags: text("tags").array(),
   isPublished: boolean("is_published").default(true),
   isQuickie: boolean("is_quickie").default(false),
