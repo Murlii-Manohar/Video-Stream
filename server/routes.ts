@@ -909,24 +909,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Video not found' });
       }
       
-      // Delete the video file
-      if (video.filePath) {
-        const filePath = path.join(process.cwd(), video.filePath.replace('/uploads/', ''));
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
-        }
-      }
+      // Use storage method to delete video and all related data
+      const deleted = await storage.deleteVideo(videoId);
       
-      // Delete the thumbnail file
-      if (video.thumbnailPath) {
-        const thumbnailPath = path.join(process.cwd(), video.thumbnailPath.replace('/uploads/', ''));
-        if (fs.existsSync(thumbnailPath)) {
-          fs.unlinkSync(thumbnailPath);
-        }
+      if (!deleted) {
+        return res.status(500).json({ message: 'Failed to delete video' });
       }
-      
-      // Delete the video from DB
-      await storage.deleteVideo(videoId);
       
       res.json({ message: 'Video deleted successfully' });
     } catch (error) {
