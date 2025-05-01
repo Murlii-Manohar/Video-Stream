@@ -22,7 +22,7 @@ function Router() {
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
   
   return (
-    <div className="min-h-screen bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text transition-colors duration-300">
+    <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
       <Header toggleSidebar={toggleSidebar} />
       <div className="flex">
         <Sidebar isOpen={sidebarOpen} />
