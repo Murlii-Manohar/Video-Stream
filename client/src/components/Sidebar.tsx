@@ -1,5 +1,5 @@
 import React from "react";
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 import { 
   HomeIcon, 
@@ -28,6 +28,22 @@ export function Sidebar({ isOpen }: SidebarProps) {
     enabled: !!user,
   });
 
+  // Helper function for navigation items
+  const NavItem = ({ href, icon, label }: { href: string, icon: React.ReactNode, label: string }) => (
+    <li>
+      <div 
+        className={cn(
+          "flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer",
+          location === href && "bg-gray-100 dark:bg-gray-800"
+        )}
+        onClick={() => navigate(href)}
+      >
+        {icon}
+        <span>{label}</span>
+      </div>
+    </li>
+  );
+
   return (
     <aside 
       className={cn(
@@ -39,50 +55,26 @@ export function Sidebar({ isOpen }: SidebarProps) {
         <div className="mb-6">
           <h3 className="font-medium text-sm uppercase text-gray-500 dark:text-gray-400 mb-2">Main</h3>
           <ul className="space-y-1">
-            <li>
-              <Link href="/">
-                <a className={cn(
-                  "flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800",
-                  location === "/" && "bg-gray-100 dark:bg-gray-800"
-                )}>
-                  <HomeIcon className="mr-3 h-5 w-5" />
-                  <span>Home</span>
-                </a>
-              </Link>
-            </li>
-            <li>
-              <Link href="/quickies">
-                <a className={cn(
-                  "flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800",
-                  location === "/quickies" && "bg-gray-100 dark:bg-gray-800"
-                )}>
-                  <ZapIcon className="mr-3 h-5 w-5" />
-                  <span>Quickies</span>
-                </a>
-              </Link>
-            </li>
-            <li>
-              <Link href="/explore">
-                <a className={cn(
-                  "flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800",
-                  location === "/explore" && "bg-gray-100 dark:bg-gray-800"
-                )}>
-                  <CompassIcon className="mr-3 h-5 w-5" />
-                  <span>Explore</span>
-                </a>
-              </Link>
-            </li>
-            <li>
-              <Link href="/history">
-                <a className={cn(
-                  "flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800",
-                  location === "/history" && "bg-gray-100 dark:bg-gray-800"
-                )}>
-                  <ClockIcon className="mr-3 h-5 w-5" />
-                  <span>History</span>
-                </a>
-              </Link>
-            </li>
+            <NavItem 
+              href="/" 
+              icon={<HomeIcon className="mr-3 h-5 w-5" />} 
+              label="Home" 
+            />
+            <NavItem 
+              href="/quickies" 
+              icon={<ZapIcon className="mr-3 h-5 w-5" />} 
+              label="Quickies" 
+            />
+            <NavItem 
+              href="/explore" 
+              icon={<CompassIcon className="mr-3 h-5 w-5" />} 
+              label="Explore" 
+            />
+            <NavItem 
+              href="/history" 
+              icon={<ClockIcon className="mr-3 h-5 w-5" />} 
+              label="History" 
+            />
           </ul>
         </div>
         
@@ -90,59 +82,31 @@ export function Sidebar({ isOpen }: SidebarProps) {
           <div className="mb-6">
             <h3 className="font-medium text-sm uppercase text-gray-500 dark:text-gray-400 mb-2">Your Account</h3>
             <ul className="space-y-1">
-              <li>
-                <Link href={`/channel/${user.id}`}>
-                  <a className={cn(
-                    "flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800",
-                    location === `/channel/${user.id}` && "bg-gray-100 dark:bg-gray-800"
-                  )}>
-                    <UserIcon className="mr-3 h-5 w-5" />
-                    <span>Your Channel</span>
-                  </a>
-                </Link>
-              </li>
-              <li>
-                <Link href="/dashboard">
-                  <a className={cn(
-                    "flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800",
-                    location === "/dashboard" && "bg-gray-100 dark:bg-gray-800"
-                  )}>
-                    <LayoutDashboardIcon className="mr-3 h-5 w-5" />
-                    <span>Dashboard</span>
-                  </a>
-                </Link>
-              </li>
-              <li>
-                <div className={cn(
-                  "flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer",
-                  location === "/channel-dashboard" && "bg-gray-100 dark:bg-gray-800"
-                )} onClick={() => navigate("/channel-dashboard")}>
-                  <LayoutDashboardIcon className="mr-3 h-5 w-5" />
-                  <span>Channel Dashboard</span>
-                </div>
-              </li>
-              <li>
-                <Link href="/liked">
-                  <a className={cn(
-                    "flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800",
-                    location === "/liked" && "bg-gray-100 dark:bg-gray-800"
-                  )}>
-                    <HeartIcon className="mr-3 h-5 w-5" />
-                    <span>Liked Videos</span>
-                  </a>
-                </Link>
-              </li>
-              <li>
-                <Link href="/bookmarks">
-                  <a className={cn(
-                    "flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800",
-                    location === "/bookmarks" && "bg-gray-100 dark:bg-gray-800"
-                  )}>
-                    <BookmarkIcon className="mr-3 h-5 w-5" />
-                    <span>Bookmarks</span>
-                  </a>
-                </Link>
-              </li>
+              <NavItem 
+                href={`/channel/${user.id}`} 
+                icon={<UserIcon className="mr-3 h-5 w-5" />} 
+                label="Your Channel" 
+              />
+              <NavItem 
+                href="/dashboard" 
+                icon={<LayoutDashboardIcon className="mr-3 h-5 w-5" />} 
+                label="Dashboard" 
+              />
+              <NavItem 
+                href="/channel-dashboard" 
+                icon={<LayoutDashboardIcon className="mr-3 h-5 w-5" />} 
+                label="Channel Dashboard" 
+              />
+              <NavItem 
+                href="/liked" 
+                icon={<HeartIcon className="mr-3 h-5 w-5" />} 
+                label="Liked Videos" 
+              />
+              <NavItem 
+                href="/bookmarks" 
+                icon={<BookmarkIcon className="mr-3 h-5 w-5" />} 
+                label="Bookmarks" 
+              />
             </ul>
           </div>
         )}
@@ -150,62 +114,41 @@ export function Sidebar({ isOpen }: SidebarProps) {
         <div className="mb-6">
           <h3 className="font-medium text-sm uppercase text-gray-500 dark:text-gray-400 mb-2">Categories</h3>
           <ul className="space-y-1">
-            <li>
-              <Link href="/category/amateur">
-                <a className="flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
-                  <span>Amateur</span>
-                </a>
-              </Link>
-            </li>
-            <li>
-              <Link href="/category/professional">
-                <a className="flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
-                  <span>Professional</span>
-                </a>
-              </Link>
-            </li>
-            <li>
-              <Link href="/category/verified">
-                <a className="flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
-                  <span>Verified Models</span>
-                </a>
-              </Link>
-            </li>
-            <li>
-              <Link href="/category/trending">
-                <a className="flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
-                  <span>Trending</span>
-                </a>
-              </Link>
-            </li>
-            <li>
-              <Link href="/category/most-viewed">
-                <a className="flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
-                  <span>Most Viewed</span>
-                </a>
-              </Link>
-            </li>
+            {["Amateur", "Professional", "Verified Models", "Trending", "Most Viewed"].map((category) => {
+              const slug = category.toLowerCase().replace(/\s+/g, '-');
+              return (
+                <li key={slug}>
+                  <div 
+                    className="flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
+                    onClick={() => navigate(`/category/${slug}`)}
+                  >
+                    <span>{category}</span>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </div>
         
-        {user && subscriptions && subscriptions.length > 0 && (
+        {user && subscriptions && Array.isArray(subscriptions) && subscriptions.length > 0 && (
           <div className="mb-6">
             <h3 className="font-medium text-sm uppercase text-gray-500 dark:text-gray-400 mb-2">Subscriptions</h3>
             <ul className="space-y-2">
               {subscriptions.map((sub: any) => (
                 <li key={sub.id}>
-                  <Link href={`/channel/${sub.channel.owner.id}`}>
-                    <a className="flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
-                      <div className="relative w-7 h-7 rounded-full overflow-hidden mr-3">
-                        <img 
-                          src={sub.channel.owner.profileImage || 'https://via.placeholder.com/50'} 
-                          alt={sub.channel.name} 
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <span>{sub.channel.owner.displayName || sub.channel.owner.username}</span>
-                    </a>
-                  </Link>
+                  <div 
+                    className="flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
+                    onClick={() => navigate(`/channel/${sub.channel?.owner?.id}`)}
+                  >
+                    <div className="relative w-7 h-7 rounded-full overflow-hidden mr-3">
+                      <img 
+                        src={sub.channel?.owner?.profileImage || 'https://via.placeholder.com/50'} 
+                        alt={sub.channel?.name || 'Channel'} 
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <span>{sub.channel?.owner?.displayName || sub.channel?.owner?.username || 'Unknown'}</span>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -216,15 +159,9 @@ export function Sidebar({ isOpen }: SidebarProps) {
           <div className="text-sm text-gray-500 dark:text-gray-400 space-y-2">
             <p>© 2023 XPlayHD</p>
             <div className="flex flex-wrap gap-x-2 gap-y-1">
-              <Link href="/terms">
-                <a className="hover:underline">Terms</a>
-              </Link>
-              <Link href="/privacy">
-                <a className="hover:underline">Privacy</a>
-              </Link>
-              <Link href="/content-policy">
-                <a className="hover:underline">Content Policy</a>
-              </Link>
+              <div className="hover:underline cursor-pointer" onClick={() => navigate("/terms")}>Terms</div>
+              <div className="hover:underline cursor-pointer" onClick={() => navigate("/privacy")}>Privacy</div>
+              <div className="hover:underline cursor-pointer" onClick={() => navigate("/content-policy")}>Content Policy</div>
             </div>
           </div>
         </div>
