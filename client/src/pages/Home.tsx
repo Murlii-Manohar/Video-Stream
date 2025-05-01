@@ -92,14 +92,25 @@ export default function Home() {
 
   return (
     <div className="p-4 md:p-8">
+      {/* Category Filter */}
+      {!isLoadingRecent && !isLoadingTrending && allCategories.length > 0 && (
+        <CategoryFilter
+          categories={allCategories}
+          selectedCategory={selectedCategory}
+          onSelectCategory={setSelectedCategory}
+        />
+      )}
+      
       {/* Featured/Recent Videos Section */}
-      <section className="mb-10">
-        <h2 className="text-2xl font-poppins font-bold mb-6">Featured Videos</h2>
+      <section className="mb-10 mt-6">
+        <h2 className="text-2xl font-poppins font-bold mb-6">
+          {selectedCategory ? `${selectedCategory} Videos` : "Featured Videos"}
+        </h2>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {isLoadingRecent
             ? Array(8).fill(0).map((_, index) => <VideoSkeleton key={index} />)
-            : recentVideos?.map((video: any) => (
+            : filteredRecentVideos?.map((video: any) => (
                 <VideoCard
                   key={video.id}
                   id={video.id}
@@ -109,6 +120,7 @@ export default function Home() {
                   duration={video.duration}
                   createdAt={video.createdAt}
                   creator={video.creator}
+                  categories={video.categories}
                 />
               ))}
         </div>
@@ -141,12 +153,14 @@ export default function Home() {
 
       {/* Trending Section */}
       <section className="mb-10">
-        <h2 className="text-2xl font-poppins font-bold mb-6">Trending Now</h2>
+        <h2 className="text-2xl font-poppins font-bold mb-6">
+          {selectedCategory ? `Trending ${selectedCategory} Videos` : "Trending Now"}
+        </h2>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {isLoadingTrending
             ? Array(8).fill(0).map((_, index) => <VideoSkeleton key={index} />)
-            : trendingVideos?.map((video: any) => (
+            : filteredTrendingVideos?.map((video: any) => (
                 <VideoCard
                   key={video.id}
                   id={video.id}
@@ -156,6 +170,7 @@ export default function Home() {
                   duration={video.duration}
                   createdAt={video.createdAt}
                   creator={video.creator}
+                  categories={video.categories}
                 />
               ))}
         </div>
