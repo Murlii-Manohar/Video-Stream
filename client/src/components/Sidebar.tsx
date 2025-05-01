@@ -20,7 +20,7 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen }: SidebarProps) {
   const { user } = useAuth();
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
 
   // Fetch user subscriptions if logged in
   const { data: subscriptions } = useQuery({

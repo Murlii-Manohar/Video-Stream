@@ -31,29 +31,45 @@ if (!fs.existsSync(storage_dir)) {
   fs.mkdirSync(storage_dir, { recursive: true });
 }
 
-const videoStorage = multer.diskStorage({
+const storage_handler = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, storage_dir)
   },
   filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
-    cb(null, 'video-' + uniqueSuffix + path.extname(file.originalname))
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    // Different prefix based on file type
+    const prefix = file.fieldname === 'videoFile' ? 'video-' : 'thumbnail-';
+    cb(null, prefix + uniqueSuffix + path.extname(file.originalname));
   }
 });
 
-const upload = multer({ 
-  storage: videoStorage,
-  limits: {
-    fileSize: 5 * 1024 * 1024 * 1024, // 5GB limit
-  },
-  fileFilter: (req, file, cb) => {
-    // Accept video files only
+const fileFilter = (req: any, file: any, cb: any) => {
+  if (file.fieldname === 'videoFile') {
+    // Accept video files only for videoFile field
     if (file.mimetype.startsWith('video/')) {
       cb(null, true);
     } else {
-      cb(new Error('Only video files are allowed'));
+      cb(new Error('Only video files are allowed for video upload'));
     }
+  } else if (file.fieldname === 'thumbnailFile') {
+    // Accept image files only for thumbnailFile field
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed for thumbnail'));
+    }
+  } else {
+    // Reject any other fields
+    cb(new Error('Unexpected field'));
   }
+};
+
+const upload = multer({ 
+  storage: storage_handler,
+  limits: {
+    fileSize: 5 * 1024 * 1024 * 1024, // 5GB limit for videos
+  },
+  fileFilter: fileFilter
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -381,19 +397,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/videos', requireAuth, upload.single('videoFile'), handleValidation(insertVideoSchema), async (req, res) => {
+  app.post('/api/videos', requireAuth, upload.fields([
+    { name: 'videoFile', maxCount: 1 },
+    { name: 'thumbnailFile', maxCount: 1 }
+  ]), handleValidation(insertVideoSchema), async (req, res) => {
     try {
       const userId = req.session.userId as number;
       
-      if (!req.file) {
+      // Cast req.files to the correct type
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+      
+      // Check if video file was uploaded
+      if (!files || !files['videoFile'] || files['videoFile'].length === 0) {
         return res.status(400).json({ message: 'No video file uploaded' });
+      }
+      
+      const videoFile = files['videoFile'][0];
+      let thumbnailPath = '';
+      
+      // Check if thumbnail was uploaded
+      if (files['thumbnailFile'] && files['thumbnailFile'].length > 0) {
+        const thumbnailFile = files['thumbnailFile'][0];
+        thumbnailPath = `/uploads/${thumbnailFile.filename}`;
       }
       
       const videoData = {
         ...req.body,
         userId,
-        filePath: `/uploads/${req.file.filename}`,
-        thumbnailPath: req.body.thumbnailPath || '',
+        filePath: `/uploads/${videoFile.filename}`,
+        thumbnailPath: thumbnailPath,
         tags: req.body.tags ? req.body.tags.split(',').map((tag: string) => tag.trim()) : []
       };
       

@@ -11,7 +11,22 @@ export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
+  formData?: FormData | undefined,
 ): Promise<Response> {
+  // If formData is provided, use it instead of JSON data
+  if (formData) {
+    const res = await fetch(url, {
+      method,
+      body: formData,
+      credentials: "include",
+      // Don't set Content-Type header, the browser will set it along with the boundary
+    });
+    
+    await throwIfResNotOk(res);
+    return res;
+  }
+  
+  // Regular JSON request
   const res = await fetch(url, {
     method,
     headers: data ? { "Content-Type": "application/json" } : {},
