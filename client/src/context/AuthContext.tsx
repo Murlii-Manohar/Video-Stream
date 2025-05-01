@@ -19,6 +19,8 @@ type AuthContextType = {
   login: (email: string, password: string) => Promise<void>;
   register: (userData: any) => Promise<void>;
   logout: () => Promise<void>;
+  sendVerificationCode: (email: string) => Promise<boolean>;
+  verifyEmail: (email: string, code: string) => Promise<boolean>;
   clearError: () => void;
 };
 
@@ -96,6 +98,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const sendVerificationCode = async (email: string): Promise<boolean> => {
+    setError(null);
+    try {
+      const response = await apiRequest("POST", "/api/auth/send-verification", { email });
+      return response.ok;
+    } catch (error) {
+      console.error("Send verification error:", error);
+      setError(error instanceof Error ? error.message : "Failed to send verification code");
+      throw error;
+    }
+  };
+
+  const verifyEmail = async (email: string, code: string): Promise<boolean> => {
+    setError(null);
+    try {
+      const response = await apiRequest("POST", "/api/auth/verify-email", { email, code });
+      const data = await response.json();
+      return data.verified || false;
+    } catch (error) {
+      console.error("Email verification error:", error);
+      setError(error instanceof Error ? error.message : "Failed to verify email");
+      throw error;
+    }
+  };
+
   const clearError = () => {
     setError(null);
   };
@@ -109,6 +136,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         register,
         logout,
+        sendVerificationCode,
+        verifyEmail,
         clearError,
       }}
     >
