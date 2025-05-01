@@ -36,9 +36,6 @@ const TABLES = {
 };
 
 export class DynamoDBStorage implements IStorage {
-  // Method declarations for missing methods that are required by IStorage interface
-  async getAllUsers(): Promise<User[]>;
-  async deleteVideo(id: number): Promise<boolean>;
   private client: DynamoDBClient;
   private docClient: DynamoDBDocumentClient;
   private initialized: boolean = false;

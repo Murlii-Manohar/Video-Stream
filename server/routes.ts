@@ -922,6 +922,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: 'Server error' });
     }
   });
+  
+  // Get all reports
+  app.get('/api/admin/reports', requireAdmin, async (req, res) => {
+    try {
+      // Use a placeholder for now, eventually add a reports table to the database
+      const mockReports = [
+        {
+          id: 1,
+          type: "video",
+          contentId: 3,
+          reportedBy: 5,
+          reason: "Inappropriate content",
+          details: "Contains non-consensual acts",
+          createdAt: new Date().toISOString(),
+          status: "pending"
+        },
+        {
+          id: 2,
+          type: "comment",
+          contentId: 7,
+          reportedBy: 3,
+          reason: "Harassment",
+          details: "User is making threats in comments",
+          createdAt: new Date(Date.now() - 86400000).toISOString(),
+          status: "resolved"
+        },
+        {
+          id: 3,
+          type: "user",
+          contentId: 8,
+          reportedBy: 2,
+          reason: "Spam",
+          details: "User is posting spam content repeatedly",
+          createdAt: new Date(Date.now() - 172800000).toISOString(),
+          status: "pending"
+        }
+      ];
+      
+      // Return the mock data
+      res.json(mockReports);
+    } catch (error) {
+      console.error('Get reports error:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
+  
+  // Update report status
+  app.post('/api/admin/reports/:id/resolve', requireAdmin, async (req, res) => {
+    try {
+      const reportId = parseInt(req.params.id);
+      // In a real implementation, update the report status in the database
+      res.json({ 
+        id: reportId,
+        status: 'resolved',
+        message: 'Report marked as resolved successfully' 
+      });
+    } catch (error) {
+      console.error('Resolve report error:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;
