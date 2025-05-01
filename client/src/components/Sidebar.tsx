@@ -113,6 +113,17 @@ export function Sidebar({ isOpen }: SidebarProps) {
                 </Link>
               </li>
               <li>
+                <Link href="/channel-dashboard">
+                  <a className={cn(
+                    "flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800",
+                    location === "/channel-dashboard" && "bg-gray-100 dark:bg-gray-800"
+                  )}>
+                    <LayoutDashboardIcon className="mr-3 h-5 w-5" />
+                    <span>Channel Dashboard</span>
+                  </a>
+                </Link>
+              </li>
+              <li>
                 <Link href="/liked">
                   <a className={cn(
                     "flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800",

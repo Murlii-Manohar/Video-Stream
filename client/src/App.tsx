@@ -13,6 +13,8 @@ import Home from "@/pages/Home";
 import Watch from "@/pages/Watch";
 import Quickies from "@/pages/Quickies";
 import Dashboard from "@/pages/Dashboard";
+import ChannelDashboard from "@/pages/ChannelDashboard";
+import Upload from "@/pages/Upload";
 
 function Router() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
