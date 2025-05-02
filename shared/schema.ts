@@ -43,7 +43,19 @@ export const videos = pgTable("videos", {
   tags: text("tags").array(),
   isPublished: boolean("is_published").default(true),
   isQuickie: boolean("is_quickie").default(false),
+  hasAds: boolean("has_ads").default(false),
+  adUrl: text("ad_url"),
+  adStartTime: integer("ad_start_time"),
   createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Site Settings table
+export const siteSettings = pgTable("site_settings", {
+  id: serial("id").primaryKey(),
+  siteAdsEnabled: boolean("site_ads_enabled").default(false),
+  siteAdUrls: text("site_ad_urls").array(),
+  siteAdPositions: text("site_ad_positions").array(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Comments table
@@ -99,6 +111,9 @@ export const insertVideoSchema = createInsertSchema(videos).omit({
   views: true,
   likes: true,
   dislikes: true,
+  hasAds: true,
+  adUrl: true,
+  adStartTime: true,
   createdAt: true,
 }).refine((data) => {
   // If it's a quickie, duration must be less than or equal to 120 seconds (2 minutes)
@@ -109,6 +124,11 @@ export const insertVideoSchema = createInsertSchema(videos).omit({
 }, {
   message: "Quickies must be 2 minutes or less",
   path: ["duration"]
+});
+
+export const insertSiteSettingsSchema = createInsertSchema(siteSettings).omit({
+  id: true,
+  updatedAt: true,
 });
 
 export const insertCommentSchema = createInsertSchema(comments).omit({
@@ -180,3 +200,6 @@ export type InsertLikedVideo = z.infer<typeof insertLikedVideoSchema>;
 
 export type VideoHistory = typeof videoHistory.$inferSelect;
 export type InsertVideoHistory = z.infer<typeof insertVideoHistorySchema>;
+
+export type SiteSettings = typeof siteSettings.$inferSelect;
+export type InsertSiteSettings = z.infer<typeof insertSiteSettingsSchema>;

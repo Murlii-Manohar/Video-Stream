@@ -983,6 +983,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: 'Server error' });
     }
   });
+  
+  // Ad Management Routes
+  
+  // Get site ad settings
+  app.get('/api/admin/ads/site', requireAdmin, async (req, res) => {
+    try {
+      const settings = await storage.getSiteSettings();
+      if (!settings) {
+        return res.status(404).json({ message: 'Site settings not found' });
+      }
+      
+      res.json({
+        siteAdsEnabled: settings.siteAdsEnabled,
+        siteAdUrls: settings.siteAdUrls,
+        siteAdPositions: settings.siteAdPositions
+      });
+    } catch (error) {
+      console.error('Get site ad settings error:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
+  
+  // Update site ad settings
+  app.post('/api/admin/ads/site', requireAdmin, async (req, res) => {
+    try {
+      const { siteAdsEnabled, siteAdUrls, siteAdPositions } = req.body;
+      
+      const settings = await storage.updateSiteSettings({
+        siteAdsEnabled,
+        siteAdUrls,
+        siteAdPositions
+      });
+      
+      res.json({
+        siteAdsEnabled: settings.siteAdsEnabled,
+        siteAdUrls: settings.siteAdUrls,
+        siteAdPositions: settings.siteAdPositions,
+        message: 'Site ad settings updated successfully'
+      });
+    } catch (error) {
+      console.error('Update site ad settings error:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
+  
+  // Toggle video ads
+  app.post('/api/admin/ads/videos/:id', requireAdmin, async (req, res) => {
+    try {
+      const videoId = parseInt(req.params.id);
+      const { hasAds, adUrl, adStartTime } = req.body;
+      
+      const video = await storage.toggleVideoAds(
+        videoId, 
+        hasAds, 
+        adUrl, 
+        adStartTime ? parseInt(adStartTime) : undefined
+      );
+      
+      if (!video) {
+        return res.status(404).json({ message: 'Video not found' });
+      }
+      
+      res.json({
+        videoId: video.id,
+        hasAds: video.hasAds,
+        adUrl: video.adUrl,
+        adStartTime: video.adStartTime,
+        message: hasAds ? 'Ads enabled for this video' : 'Ads disabled for this video'
+      });
+    } catch (error) {
+      console.error('Toggle video ads error:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

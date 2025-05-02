@@ -36,6 +36,7 @@ export interface IStorage {
   updateVideo(id: number, videoData: Partial<Video>): Promise<Video | undefined>;
   deleteVideo(id: number): Promise<boolean>;
   incrementVideoViews(id: number): Promise<Video | undefined>;
+  toggleVideoAds(id: number, hasAds: boolean, adUrl?: string, adStartTime?: number): Promise<Video | undefined>;
   
   // Comment methods
   getComment(id: number): Promise<Comment | undefined>;
@@ -56,6 +57,10 @@ export interface IStorage {
   getVideoHistory(id: number): Promise<VideoHistory | undefined>;
   getVideoHistoryByUser(userId: number): Promise<VideoHistory[]>;
   createVideoHistory(videoHistory: InsertVideoHistory): Promise<VideoHistory>;
+  
+  // Site settings methods
+  getSiteSettings(): Promise<SiteSettings | undefined>;
+  updateSiteSettings(settings: Partial<SiteSettings>): Promise<SiteSettings>;
   
   // Authentication methods
   authenticateUser(email: string, password: string): Promise<User | undefined>;
@@ -79,6 +84,7 @@ export class MemStorage implements IStorage {
   private subscriptionIdCounter: number;
   private likedVideoIdCounter: number;
   private videoHistoryIdCounter: number;
+  private siteSettings: SiteSettings;
   
   constructor() {
     this.users = new Map();
@@ -97,8 +103,31 @@ export class MemStorage implements IStorage {
     this.likedVideoIdCounter = 1;
     this.videoHistoryIdCounter = 1;
     
+    // Initialize site settings
+    this.siteSettings = {
+      id: 1,
+      siteAdsEnabled: false,
+      siteAdUrls: [],
+      siteAdPositions: [],
+      updatedAt: new Date()
+    };
+    
     // Add sample data
     this.initializeSampleData();
+  }
+  
+  // Site settings methods
+  async getSiteSettings(): Promise<SiteSettings | undefined> {
+    return this.siteSettings;
+  }
+  
+  async updateSiteSettings(settings: Partial<SiteSettings>): Promise<SiteSettings> {
+    this.siteSettings = {
+      ...this.siteSettings,
+      ...settings,
+      updatedAt: new Date()
+    };
+    return this.siteSettings;
   }
   
   // Helper methods for password hashing
@@ -293,6 +322,21 @@ export class MemStorage implements IStorage {
     if (!video) return undefined;
     
     const updatedVideo = { ...video, views: video.views + 1 };
+    this.videos.set(id, updatedVideo);
+    return updatedVideo;
+  }
+
+  async toggleVideoAds(id: number, hasAds: boolean, adUrl?: string, adStartTime?: number): Promise<Video | undefined> {
+    const video = await this.getVideo(id);
+    if (!video) return undefined;
+    
+    const updatedVideo = { 
+      ...video, 
+      hasAds,
+      adUrl: hasAds ? (adUrl || video.adUrl) : null,
+      adStartTime: hasAds ? (adStartTime || video.adStartTime) : null
+    };
+    
     this.videos.set(id, updatedVideo);
     return updatedVideo;
   }
