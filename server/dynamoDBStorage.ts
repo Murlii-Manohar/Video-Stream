@@ -10,7 +10,8 @@ import {
   PutCommand, 
   QueryCommand, 
   ScanCommand, 
-  UpdateCommand 
+  UpdateCommand,
+  DeleteCommand
 } from "@aws-sdk/lib-dynamodb";
 import { 
   User, InsertUser, 
@@ -1169,6 +1170,74 @@ export class DynamoDBStorage implements IStorage {
       console.error('Error deleting video from DynamoDB:', error);
       return false;
     }
+  }
+  
+  // Site settings methods
+  async getSiteSettings(): Promise<SiteSettings | undefined> {
+    try {
+      const response = await this.docClient.send(
+        new GetCommand({
+          TableName: TABLES.SITE_SETTINGS,
+          Key: { id: 1 } // Always use ID 1 for the single site settings record
+        })
+      );
+      
+      if (response.Item) {
+        return response.Item as SiteSettings;
+      }
+      
+      // If no settings exist, create default settings
+      const defaultSettings = await this.updateSiteSettings(this.defaultSiteSettings);
+      return defaultSettings;
+    } catch (error) {
+      console.error("Error getting site settings:", error);
+      return this.defaultSiteSettings;
+    }
+  }
+
+  async updateSiteSettings(settings: Partial<SiteSettings>): Promise<SiteSettings> {
+    try {
+      // Check if settings already exist
+      const existingSettings = await this.docClient.send(
+        new GetCommand({
+          TableName: TABLES.SITE_SETTINGS,
+          Key: { id: 1 }
+        })
+      );
+      
+      const updatedSettings: SiteSettings = {
+        ...(existingSettings.Item as SiteSettings || this.defaultSiteSettings),
+        ...settings,
+        id: 1, // Always use ID 1
+        updatedAt: new Date().toISOString()
+      };
+      
+      await this.docClient.send(
+        new PutCommand({
+          TableName: TABLES.SITE_SETTINGS,
+          Item: updatedSettings
+        })
+      );
+      
+      return updatedSettings;
+    } catch (error) {
+      console.error("Error updating site settings:", error);
+      return this.defaultSiteSettings;
+    }
+  }
+  
+  // Video ad toggle method
+  async toggleVideoAds(id: number, hasAds: boolean, adUrl?: string, adStartTime?: number): Promise<Video | undefined> {
+    const video = await this.getVideo(id);
+    if (!video) return undefined;
+    
+    const updateData: Partial<Video> = {
+      hasAds,
+      adUrl: hasAds ? adUrl || null : null,
+      adStartTime: hasAds && adStartTime !== undefined ? adStartTime : null
+    };
+    
+    return this.updateVideo(id, updateData);
   }
 }
 
