@@ -903,16 +903,20 @@ export class DynamoDBStorage implements IStorage {
 
   async getCommentsByVideo(videoId: number): Promise<Comment[]> {
     try {
+      console.log(`Fetching comments for video ${videoId} using scan`);
+      // Using Scan instead of index-based query
       const response = await this.docClient.send(
-        new QueryCommand({
+        new ScanCommand({
           TableName: TABLES.COMMENTS,
-          IndexName: "VideoIdIndex",
-          KeyConditionExpression: "videoId = :videoId",
+          FilterExpression: "videoId = :videoId",
           ExpressionAttributeValues: { ":videoId": videoId }
         })
       );
       
       const comments = response.Items as Comment[] || [];
+      console.log(`Found ${comments.length} comments for video ${videoId}`);
+      
+      // Sort by createdAt (newest first)
       return comments.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     } catch (error) {
       console.error(`Error getting comments for video ${videoId}:`, error);
@@ -976,14 +980,16 @@ export class DynamoDBStorage implements IStorage {
 
   async getSubscriptionsByUser(userId: number): Promise<Subscription[]> {
     try {
+      console.log(`Fetching subscriptions for user ${userId} using scan`);
+      // Using Scan operation instead of index-based query
       const response = await this.docClient.send(
-        new QueryCommand({
+        new ScanCommand({
           TableName: TABLES.SUBSCRIPTIONS,
-          IndexName: "UserIdIndex",
-          KeyConditionExpression: "userId = :userId",
+          FilterExpression: "userId = :userId",
           ExpressionAttributeValues: { ":userId": userId }
         })
       );
+      console.log(`Found ${response.Items?.length || 0} subscriptions for user ${userId}`);
       return response.Items as Subscription[] || [];
     } catch (error) {
       console.error(`Error getting subscriptions for user ${userId}:`, error);
@@ -1055,14 +1061,16 @@ export class DynamoDBStorage implements IStorage {
 
   async getLikedVideosByUser(userId: number): Promise<LikedVideo[]> {
     try {
+      console.log(`Fetching liked videos for user ${userId} using scan`);
+      // Using Scan operation instead of index-based query
       const response = await this.docClient.send(
-        new QueryCommand({
+        new ScanCommand({
           TableName: TABLES.LIKED_VIDEOS,
-          IndexName: "UserIdIndex",
-          KeyConditionExpression: "userId = :userId",
+          FilterExpression: "userId = :userId",
           ExpressionAttributeValues: { ":userId": userId }
         })
       );
+      console.log(`Found ${response.Items?.length || 0} liked videos for user ${userId}`);
       return response.Items as LikedVideo[] || [];
     } catch (error) {
       console.error(`Error getting liked videos for user ${userId}:`, error);
@@ -1131,16 +1139,20 @@ export class DynamoDBStorage implements IStorage {
 
   async getVideoHistoryByUser(userId: number): Promise<VideoHistory[]> {
     try {
+      console.log(`Fetching video history for user ${userId} using scan`);
+      // Using Scan operation instead of index-based query
       const response = await this.docClient.send(
-        new QueryCommand({
+        new ScanCommand({
           TableName: TABLES.VIDEO_HISTORY,
-          IndexName: "UserIdIndex",
-          KeyConditionExpression: "userId = :userId",
+          FilterExpression: "userId = :userId",
           ExpressionAttributeValues: { ":userId": userId }
         })
       );
       
       const history = response.Items as VideoHistory[] || [];
+      console.log(`Found ${history.length} history items for user ${userId}`);
+      
+      // Sort by viewedAt (newest first)
       return history.sort((a, b) => new Date(b.viewedAt).getTime() - new Date(a.viewedAt).getTime());
     } catch (error) {
       console.error(`Error getting video history for user ${userId}:`, error);
