@@ -110,7 +110,22 @@ export default function Explore() {
         ) : filteredVideos && filteredVideos.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {filteredVideos.map((video: any) => (
-              <VideoCard key={video.id} video={video} />
+              <VideoCard 
+                key={video.id}
+                id={video.id}
+                title={video.title}
+                thumbnailPath={video.thumbnailPath || '/placeholder-thumbnail.jpg'}
+                views={video.views || 0}
+                duration={video.duration || 0}
+                createdAt={video.createdAt}
+                creator={{
+                  id: video.userId,
+                  username: video.creator?.username || 'Unknown',
+                  displayName: video.creator?.displayName,
+                  profileImage: video.creator?.profileImage
+                }}
+                categories={video.categories || []}
+              />
             ))}
           </div>
         ) : (

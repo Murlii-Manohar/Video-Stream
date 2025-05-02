@@ -7,9 +7,16 @@ import {
   SettingsIcon, 
   MaximizeIcon,
   Volume1Icon,
-  VolumeXIcon
+  VolumeXIcon,
+  CheckIcon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface VideoPlayerProps {
   src: string;
@@ -25,6 +32,11 @@ export function VideoPlayer({ src, poster, onEnded }: VideoPlayerProps) {
   const [duration, setDuration] = useState(0);
   const [isControlsVisible, setIsControlsVisible] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [currentQuality, setCurrentQuality] = useState<string>("auto");
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  
+  // Available video quality options
+  const qualityOptions = ["auto", "1080p", "720p", "480p", "360p"];
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const playerRef = useRef<HTMLDivElement>(null);
@@ -142,6 +154,36 @@ export function VideoPlayer({ src, poster, onEnded }: VideoPlayerProps) {
     };
   }, [onEnded]);
   
+  // Handle quality change
+  const handleQualityChange = (quality: string) => {
+    // Save current playback position
+    const currentPosition = videoRef.current?.currentTime || 0;
+    const wasPlaying = isPlaying;
+    
+    // In a real implementation, this would switch video sources to different quality versions
+    // For now, we'll just update the state
+    setCurrentQuality(quality);
+    
+    // This would simulate changing the video source:
+    // 1. Update src attribute with quality-specific URL
+    // 2. Load the new source
+    // 3. Seek to previous position
+    // 4. Resume playback if it was playing
+    
+    // Simulate a source change by logging
+    console.log(`Quality changed to ${quality}`);
+    
+    // For demonstration, we'll just set a timeout to simulate loading the new quality
+    setTimeout(() => {
+      if (videoRef.current) {
+        videoRef.current.currentTime = currentPosition;
+        if (wasPlaying) {
+          videoRef.current.play().catch(err => console.error("Error resuming playback:", err));
+        }
+      }
+    }, 500);
+  };
+
   // Handle volume icon based on state
   const VolumeIconComponent = () => {
     if (muted || volume === 0) return <VolumeXIcon className="h-5 w-5" />;
