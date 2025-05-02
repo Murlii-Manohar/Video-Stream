@@ -19,7 +19,8 @@ import {
   Comment, InsertComment, 
   Subscription, InsertSubscription, 
   LikedVideo, InsertLikedVideo, 
-  VideoHistory, InsertVideoHistory 
+  VideoHistory, InsertVideoHistory,
+  SiteSettings
 } from "@shared/schema";
 import { IStorage } from "./storage";
 import * as crypto from "crypto";
@@ -32,10 +33,18 @@ const TABLES = {
   COMMENTS: "XPlayHD_Comments",
   SUBSCRIPTIONS: "XPlayHD_Subscriptions",
   LIKED_VIDEOS: "XPlayHD_LikedVideos",
-  VIDEO_HISTORY: "XPlayHD_VideoHistory"
+  VIDEO_HISTORY: "XPlayHD_VideoHistory",
+  SITE_SETTINGS: "XPlayHD_SiteSettings"
 };
 
 export class DynamoDBStorage implements IStorage {
+  private defaultSiteSettings: SiteSettings = {
+    id: 1,
+    siteAdsEnabled: false,
+    siteAdUrls: [],
+    siteAdPositions: [],
+    updatedAt: new Date().toISOString()
+  };
   private client: DynamoDBClient;
   private docClient: DynamoDBDocumentClient;
   private initialized: boolean = false;
@@ -263,6 +272,15 @@ export class DynamoDBStorage implements IStorage {
               KeySchema: [{ AttributeName: "userId", KeyType: "HASH" }],
               Projection: { ProjectionType: "ALL" }
             }
+          ]
+        };
+      
+      case TABLES.SITE_SETTINGS:
+        return {
+          ...baseParams,
+          KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
+          AttributeDefinitions: [
+            { AttributeName: "id", AttributeType: "N" }
           ]
         };
       
