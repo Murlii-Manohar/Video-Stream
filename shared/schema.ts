@@ -115,6 +115,26 @@ export const insertVideoSchema = createInsertSchema(videos).omit({
   adUrl: true,
   adStartTime: true,
   createdAt: true,
+  // For form data upload, we'll add these back manually on the server
+  userId: true,
+  filePath: true,
+}).extend({
+  // Make tags field accept both arrays and strings
+  tags: z.union([
+    z.string().transform(value => value.split(',').map(tag => tag.trim())),
+    z.array(z.string())
+  ]).optional(),
+  // Make categories field accept both arrays and strings (JSON strings)
+  categories: z.union([
+    z.string().transform(value => {
+      try {
+        return JSON.parse(value);
+      } catch (e) {
+        return value.split(',').map(cat => cat.trim());
+      }
+    }),
+    z.array(z.string())
+  ]).optional(),
 }).refine((data) => {
   // If it's a quickie, duration must be less than or equal to 120 seconds (2 minutes)
   if (data.isQuickie && data.duration && data.duration > 120) {

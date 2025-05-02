@@ -14,7 +14,7 @@ import {
 import fs from "fs";
 import path from "path";
 import multer from "multer";
-import { ZodError } from "zod";
+import { ZodError, z } from "zod";
 import session from "express-session";
 import MemoryStore from "memorystore";
 import { initializeEmailService, sendVerificationEmail, verifyCode } from "./services/emailService";
@@ -464,28 +464,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
         thumbnailPath = `/uploads/${thumbnailFile.filename}`;
       }
       
-      // Parse categories from JSON string if present
-      let categories = [];
-      if (req.body.categories) {
-        try {
-          categories = JSON.parse(req.body.categories);
-        } catch (e) {
-          console.error('Failed to parse categories:', e);
+      // Handle boolean conversion
+      if (typeof req.body.isQuickie === 'string') {
+        req.body.isQuickie = req.body.isQuickie === 'true' ? true : false;
+      }
+      
+      if (typeof req.body.isPublished === 'string') {
+        req.body.isPublished = req.body.isPublished === 'true' ? true : false;
+      }
+      
+      // Converting channelId to number if present
+      if (req.body.channelId && typeof req.body.channelId === 'string') {
+        const channelId = parseInt(req.body.channelId);
+        if (!isNaN(channelId)) {
+          req.body.channelId = channelId;
         }
       }
       
-      const videoData = {
-        ...req.body,
-        userId,
-        filePath: `/uploads/${videoFile.filename}`,
-        thumbnailPath: thumbnailPath,
-        categories: categories,
-        tags: req.body.tags ? req.body.tags.split(',').map((tag: string) => tag.trim()) : []
-      };
+      // Converting duration to number if present
+      if (req.body.duration && typeof req.body.duration === 'string') {
+        const duration = parseInt(req.body.duration);
+        if (!isNaN(duration)) {
+          req.body.duration = duration;
+        }
+      }
       
-      const video = await storage.createVideo(videoData);
-      
-      res.status(201).json(video);
+      try {
+        // Validate with schema
+        const validatedData = insertVideoSchema.parse(req.body);
+        
+        // Create the complete video data with the required fields
+        const videoData = {
+          ...validatedData,
+          userId,
+          filePath: `/uploads/${videoFile.filename}`,
+          thumbnailPath: thumbnailPath || null
+        };
+        
+        const video = await storage.createVideo(videoData);
+        res.status(201).json(video);
+      } catch (validationError) {
+        if (validationError instanceof ZodError) {
+          console.log('Video validation error:', validationError.errors);
+          return res.status(400).json({ 
+            message: 'Validation error', 
+            errors: validationError.errors.map(err => ({
+              path: err.path.join('.'),
+              message: err.message,
+              code: err.code
+            }))
+          });
+        }
+        throw validationError;
+      }
     } catch (error) {
       console.error('Upload video error:', error);
       res.status(500).json({ message: 'Server error during video upload' });
