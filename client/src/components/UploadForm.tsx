@@ -234,7 +234,7 @@ export default function UploadForm({ open, onOpenChange }: UploadFormProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold mb-4">Upload Content</DialogTitle>
           <Tabs value={uploadType} onValueChange={(value) => setUploadType(value as "video" | "quickie")}>
@@ -324,7 +324,7 @@ export default function UploadForm({ open, onOpenChange }: UploadFormProps) {
             )}
             
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pb-16">
                 <FormField
                   control={form.control}
                   name="title"
@@ -466,7 +466,7 @@ export default function UploadForm({ open, onOpenChange }: UploadFormProps) {
                   )}
                 />
                 
-                <DialogFooter className="flex justify-end gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <DialogFooter className="flex justify-end gap-2 pt-4 mt-4 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-background">
                   <Button 
                     type="button" 
                     variant="outline" 
