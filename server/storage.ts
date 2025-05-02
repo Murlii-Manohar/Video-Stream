@@ -232,7 +232,7 @@ export class MemStorage implements IStorage {
   
   async getVideos(limit = 50, offset = 0): Promise<Video[]> {
     return Array.from(this.videos.values())
-      .filter(video => video.isPublished)
+      // Show all videos - removed filter for isPublished
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(offset, offset + limit);
   }
@@ -245,22 +245,25 @@ export class MemStorage implements IStorage {
   
   async getRecentVideos(limit = 8): Promise<Video[]> {
     return Array.from(this.videos.values())
-      .filter(video => video.isPublished && !video.isQuickie)
+      // Show all non-quickie videos
+      .filter(video => !video.isQuickie)
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, limit);
   }
   
   async getTrendingVideos(limit = 8): Promise<Video[]> {
     return Array.from(this.videos.values())
-      .filter(video => video.isPublished && !video.isQuickie)
-      .sort((a, b) => b.views - a.views)
+      // Show all non-quickie videos
+      .filter(video => !video.isQuickie)
+      .sort((a, b) => (b.views || 0) - (a.views || 0))
       .slice(0, limit);
   }
   
   async getQuickies(limit = 12): Promise<Video[]> {
     return Array.from(this.videos.values())
-      .filter((video) => video.isPublished && video.isQuickie)
-      .sort((a, b) => b.views - a.views)
+      // Show all quickie videos
+      .filter((video) => video.isQuickie)
+      .sort((a, b) => (b.views || 0) - (a.views || 0))
       .slice(0, limit);
   }
   

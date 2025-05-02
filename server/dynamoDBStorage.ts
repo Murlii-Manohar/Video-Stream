@@ -598,12 +598,13 @@ export class DynamoDBStorage implements IStorage {
       const response = await this.docClient.send(
         new ScanCommand({
           TableName: TABLES.VIDEOS,
-          Limit: limit
+          Limit: limit * 2 // Get more videos to filter/sort
         })
       );
 
       const videos = response.Items as Video[] || [];
       return videos
+        .filter(video => !video.isQuickie) // Only filter by non-quickie, don't check isPublished
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
         .slice(0, limit);
     } catch (error) {
@@ -617,12 +618,13 @@ export class DynamoDBStorage implements IStorage {
       const response = await this.docClient.send(
         new ScanCommand({
           TableName: TABLES.VIDEOS,
-          Limit: limit * 2 // Fetch more videos to sort
+          Limit: limit * 3 // Fetch more videos to filter/sort
         })
       );
 
       const videos = response.Items as Video[] || [];
       return videos
+        .filter(video => !video.isQuickie) // Only filter by non-quickie, don't check isPublished
         .sort((a, b) => (b.views || 0) - (a.views || 0))
         .slice(0, limit);
     } catch (error) {
@@ -643,6 +645,7 @@ export class DynamoDBStorage implements IStorage {
       );
 
       const videos = response.Items as Video[] || [];
+      // Don't filter by isPublished, show all quickies
       return videos
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
         .slice(0, limit);
