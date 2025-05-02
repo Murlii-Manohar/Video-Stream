@@ -561,14 +561,21 @@ export class DynamoDBStorage implements IStorage {
 
   async getVideos(limit = 50, offset = 0): Promise<Video[]> {
     try {
+      console.log('Fetching videos from DynamoDB with limit:', limit);
       const response = await this.docClient.send(
         new ScanCommand({
           TableName: TABLES.VIDEOS,
-          Limit: limit
+          Limit: 100 // Request more to ensure we get enough after filtering
         })
       );
 
       const videos = response.Items as Video[] || [];
+      console.log(`Found ${videos.length} videos in DynamoDB`);
+      
+      if (videos.length > 0) {
+        console.log('Sample video data:', JSON.stringify(videos[0]));
+      }
+      
       return videos.slice(offset, offset + limit);
     } catch (error) {
       console.error("Error getting videos:", error);
@@ -595,18 +602,34 @@ export class DynamoDBStorage implements IStorage {
 
   async getRecentVideos(limit = 8): Promise<Video[]> {
     try {
+      console.log('Fetching recent videos from DynamoDB with limit:', limit);
       const response = await this.docClient.send(
         new ScanCommand({
           TableName: TABLES.VIDEOS,
-          Limit: limit * 2 // Get more videos to filter/sort
+          Limit: 100 // Get more videos to filter/sort
         })
       );
 
       const videos = response.Items as Video[] || [];
-      return videos
-        .filter(video => !video.isQuickie) // Only filter by non-quickie, don't check isPublished
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      console.log(`Found ${videos.length} total videos for recent videos section`);
+      
+      const filteredVideos = videos.filter(video => !video.isQuickie);
+      console.log(`After filtering out quickies: ${filteredVideos.length} videos remain`);
+      
+      const sortedVideos = filteredVideos
+        .sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return dateB - dateA;
+        })
         .slice(0, limit);
+      
+      console.log(`Returning ${sortedVideos.length} recent videos`);
+      if (sortedVideos.length > 0) {
+        console.log('First recent video:', JSON.stringify(sortedVideos[0]));
+      }
+      
+      return sortedVideos;
     } catch (error) {
       console.error("Error getting recent videos:", error);
       return [];
@@ -615,18 +638,30 @@ export class DynamoDBStorage implements IStorage {
 
   async getTrendingVideos(limit = 8): Promise<Video[]> {
     try {
+      console.log('Fetching trending videos from DynamoDB with limit:', limit);
       const response = await this.docClient.send(
         new ScanCommand({
           TableName: TABLES.VIDEOS,
-          Limit: limit * 3 // Fetch more videos to filter/sort
+          Limit: 100 // Fetch more videos to filter/sort
         })
       );
 
       const videos = response.Items as Video[] || [];
-      return videos
-        .filter(video => !video.isQuickie) // Only filter by non-quickie, don't check isPublished
+      console.log(`Found ${videos.length} total videos for trending section`);
+      
+      const filteredVideos = videos.filter(video => !video.isQuickie);
+      console.log(`After filtering out quickies: ${filteredVideos.length} videos remain`);
+      
+      const sortedVideos = filteredVideos
         .sort((a, b) => (b.views || 0) - (a.views || 0))
         .slice(0, limit);
+      
+      console.log(`Returning ${sortedVideos.length} trending videos`);
+      if (sortedVideos.length > 0) {
+        console.log('First trending video:', JSON.stringify(sortedVideos[0]));
+      }
+      
+      return sortedVideos;
     } catch (error) {
       console.error("Error getting trending videos:", error);
       return [];
@@ -635,20 +670,35 @@ export class DynamoDBStorage implements IStorage {
 
   async getQuickies(limit = 12): Promise<Video[]> {
     try {
+      console.log('Fetching quickie videos from DynamoDB');
       const response = await this.docClient.send(
         new ScanCommand({
           TableName: TABLES.VIDEOS,
-          FilterExpression: "isQuickie = :isQuickie",
-          ExpressionAttributeValues: { ":isQuickie": true },
-          Limit: limit * 2 // Fetch more videos to sort
+          Limit: 100 // Scan all videos to find quickies
         })
       );
 
       const videos = response.Items as Video[] || [];
-      // Don't filter by isPublished, show all quickies
-      return videos
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      console.log(`Found ${videos.length} total videos when searching for quickies`);
+      
+      // Filter quickies manually instead of using FilterExpression to avoid issues
+      const quickies = videos.filter(video => video.isQuickie === true);
+      console.log(`Found ${quickies.length} quickie videos after filtering`);
+      
+      const sortedQuickies = quickies
+        .sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return dateB - dateA;
+        })
         .slice(0, limit);
+      
+      console.log(`Returning ${sortedQuickies.length} quickie videos`);
+      if (sortedQuickies.length > 0) {
+        console.log('First quickie video:', JSON.stringify(sortedQuickies[0]));
+      }
+      
+      return sortedQuickies;
     } catch (error) {
       console.error("Error getting quickies:", error);
       return [];

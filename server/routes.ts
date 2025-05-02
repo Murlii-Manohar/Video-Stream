@@ -493,15 +493,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Validate with schema
         const validatedData = insertVideoSchema.parse(req.body);
         
-        // Create the complete video data with the required fields
+        // Create the complete video data with the required fields and ensure isPublished is true
         const videoData = {
           ...validatedData,
           userId,
           filePath: `/uploads/${videoFile.filename}`,
-          thumbnailPath: thumbnailPath || null
+          thumbnailPath: thumbnailPath || null,
+          isPublished: true // Force all uploaded videos to be published
         };
         
+        console.log('Creating video with data:', JSON.stringify(videoData));
         const video = await storage.createVideo(videoData);
+        console.log('Video created successfully:', JSON.stringify(video));
         res.status(201).json(video);
       } catch (validationError) {
         if (validationError instanceof ZodError) {
