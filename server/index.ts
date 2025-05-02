@@ -1,12 +1,17 @@
+import dotenv from 'dotenv';
+
+// Load environment variables from .env file first, before any other imports
+dotenv.config();
+
+// Ensure USE_DYNAMODB is set explicitly
+process.env.USE_DYNAMODB = 'true';
+console.log('ENV Variable explicitly set: USE_DYNAMODB =', process.env.USE_DYNAMODB);
+
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { storage } from "./storage";
 import { dynamoDBStorage } from "./dynamoDBStorage";
-import dotenv from 'dotenv';
-
-// Load environment variables from .env file
-dotenv.config();
+import { storage } from "./storage";
 
 const app = express();
 app.use(express.json());
