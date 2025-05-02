@@ -121,7 +121,14 @@ export default function UploadForm({ open, onOpenChange }: UploadFormProps) {
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to upload video");
+        let errorMessage = errorData.message || "Failed to upload video";
+        
+        // Check if we have detailed validation errors
+        if (errorData.errors && errorData.errors.length > 0) {
+          errorMessage = errorData.errors.map((err: any) => err.message).join(", ");
+        }
+        
+        throw new Error(errorMessage);
       }
       
       return response.json();

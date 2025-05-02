@@ -90,13 +90,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Middleware to handle validation errors
   const handleValidation = (schema: any) => async (req: Request, res: Response, next: any) => {
     try {
+      // For multipart/form-data requests, handle boolean, number, and array conversions
+      if (req.is('multipart/form-data')) {
+        // Convert string "true"/"false" to boolean
+        for (const key in req.body) {
+          if (req.body[key] === 'true') req.body[key] = true;
+          if (req.body[key] === 'false') req.body[key] = false;
+          
+          // Try to parse JSON for arrays
+          if (typeof req.body[key] === 'string' && 
+              (req.body[key].startsWith('[') || req.body[key].startsWith('{'))) {
+            try {
+              req.body[key] = JSON.parse(req.body[key]);
+            } catch (e) {
+              console.log(`Failed to parse JSON for field ${key}:`, e);
+            }
+          }
+        }
+      }
+      
       req.body = schema.parse(req.body);
       next();
     } catch (error) {
+      console.log('Validation error:', error);
       if (error instanceof ZodError) {
         return res.status(400).json({ 
           message: 'Validation error', 
-          errors: error.errors 
+          errors: error.errors.map((err: any) => ({
+            path: err.path.join('.'),
+            message: err.message,
+            code: err.code
+          }))
         });
       }
       next(error);
