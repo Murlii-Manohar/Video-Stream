@@ -5,7 +5,8 @@ import {
   comments, Comment, InsertComment,
   subscriptions, Subscription, InsertSubscription,
   likedVideos, LikedVideo, InsertLikedVideo,
-  videoHistory, VideoHistory, InsertVideoHistory
+  videoHistory, VideoHistory, InsertVideoHistory,
+  siteSettings, SiteSettings, InsertSiteSettings
 } from "@shared/schema";
 import { createHash } from "crypto";
 
@@ -465,7 +466,7 @@ export class MemStorage implements IStorage {
   
   // Initialize sample data
   private async initializeSampleData() {
-    // Create admin user
+    // Create admin user only (no sample content)
     const adminUser = await this.createUser({
       username: 'admin',
       password: '@Manohar596',
@@ -478,252 +479,13 @@ export class MemStorage implements IStorage {
     // Set admin privileges
     await this.updateUser(adminUser.id, { isAdmin: true });
     
-    // Create sample users
-    const user1 = await this.createUser({
-      username: 'sophia_luxe',
-      password: 'password123',
-      email: 'sophia@example.com',
-      displayName: 'Sophia Luxe',
-      profileImage: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=100&h=100',
-      bio: 'Professional adult content creator with a passion for quality production',
+    // Set default site settings
+    await this.updateSiteSettings({
+      siteName: 'XPlayHD',
+      allowsAds: true,
+      defaultAdUrl: '',
+      adStartTime: 5
     });
-    
-    const user2 = await this.createUser({
-      username: 'ruby_passion',
-      password: 'password123',
-      email: 'ruby@example.com',
-      displayName: 'Ruby Passion',
-      profileImage: 'https://images.unsplash.com/photo-1522556189639-b150ed9c4330?auto=format&fit=crop&w=100&h=100',
-      bio: 'Redhead beauty bringing your fantasies to life',
-    });
-    
-    const user3 = await this.createUser({
-      username: 'elite_fantasies',
-      password: 'password123',
-      email: 'elite@example.com',
-      displayName: 'Elite Fantasies',
-      profileImage: 'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=100&h=100',
-      bio: 'Premium adult content that exceeds your expectations',
-    });
-    
-    const user4 = await this.createUser({
-      username: 'tropical_desires',
-      password: 'password123',
-      email: 'tropical@example.com',
-      displayName: 'Tropical Desires',
-      profileImage: 'https://images.unsplash.com/photo-1607746882042-944635dfe10e?auto=format&fit=crop&w=100&h=100',
-      bio: 'Bringing the heat from exotic locations',
-    });
-    
-    // Create sample videos
-    await this.createVideo({
-      userId: user1.id,
-      title: 'Hot Summer Adventures with Stunning Blonde',
-      description: 'Join me for a day at the beach that turns into something more exciting',
-      filePath: '/videos/sample1.mp4',
-      thumbnailPath: 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?auto=format&fit=crop&w=480&h=270',
-      duration: 765, // 12:45 in seconds
-      category: 'Professional',
-      tags: ['beach', 'blonde', 'summer'],
-      isPublished: true,
-      isQuickie: false,
-    });
-    
-    await this.createVideo({
-      userId: user2.id,
-      title: 'Intimate Evening with a Redhead Beauty',
-      description: 'A romantic evening that turns into a passionate night',
-      filePath: '/videos/sample2.mp4',
-      thumbnailPath: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=480&h=270',
-      duration: 512, // 8:32 in seconds
-      category: 'Amateur',
-      tags: ['redhead', 'evening', 'romantic'],
-      isPublished: true,
-      isQuickie: false,
-    });
-    
-    await this.createVideo({
-      userId: user3.id,
-      title: 'Passionate Encounter in Luxury Hotel Suite',
-      description: 'Experience what happens when luxury meets passion',
-      filePath: '/videos/sample3.mp4',
-      thumbnailPath: 'https://images.unsplash.com/photo-1543599538-a6c4f6cc5c05?auto=format&fit=crop&w=480&h=270',
-      duration: 1198, // 19:58 in seconds
-      category: 'Professional',
-      tags: ['luxury', 'hotel', 'encounter'],
-      isPublished: true,
-      isQuickie: false,
-    });
-    
-    await this.createVideo({
-      userId: user4.id,
-      title: 'Exotic Beach Romance at Sunset',
-      description: 'Watch what happens as the sun goes down on a private beach',
-      filePath: '/videos/sample4.mp4',
-      thumbnailPath: 'https://images.unsplash.com/photo-1508739773434-c26b3d09e071?auto=format&fit=crop&w=480&h=270',
-      duration: 1634, // 27:14 in seconds
-      category: 'Professional',
-      tags: ['beach', 'sunset', 'exotic'],
-      isPublished: true,
-      isQuickie: false,
-    });
-    
-    await this.createVideo({
-      userId: user1.id,
-      title: 'First Time Experience with Two Partners',
-      description: 'Watch my exciting first time with multiple partners',
-      filePath: '/videos/sample5.mp4',
-      thumbnailPath: 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=480&h=270',
-      duration: 862, // 14:22 in seconds
-      category: 'Amateur',
-      tags: ['threesome', 'first time', 'adventure'],
-      isPublished: true,
-      isQuickie: false,
-    });
-    
-    await this.createVideo({
-      userId: user2.id,
-      title: 'Office Fantasy with the New Secretary',
-      description: 'Workplace fantasy turns into reality after hours',
-      filePath: '/videos/sample6.mp4',
-      thumbnailPath: 'https://images.unsplash.com/photo-1533461502717-83546f485d24?auto=format&fit=crop&w=480&h=270',
-      duration: 1296, // 21:36 in seconds
-      category: 'Professional',
-      tags: ['office', 'secretary', 'roleplay'],
-      isPublished: true,
-      isQuickie: false,
-    });
-    
-    await this.createVideo({
-      userId: user3.id,
-      title: 'Yoga Instructor After Hours Sessions',
-      description: 'Private yoga lessons that turn into something more flexible',
-      filePath: '/videos/sample7.mp4',
-      thumbnailPath: 'https://images.unsplash.com/photo-1517411032315-54ef2cb783bb?auto=format&fit=crop&w=480&h=270',
-      duration: 948, // 15:48 in seconds
-      category: 'Professional',
-      tags: ['yoga', 'fitness', 'instructor'],
-      isPublished: true,
-      isQuickie: false,
-    });
-    
-    await this.createVideo({
-      userId: user4.id,
-      title: 'Intimate Massage Therapy Session',
-      description: 'A relaxing massage turns passionate',
-      filePath: '/videos/sample8.mp4',
-      thumbnailPath: 'https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?auto=format&fit=crop&w=480&h=270',
-      duration: 1089, // 18:09 in seconds
-      category: 'Professional',
-      tags: ['massage', 'relaxing', 'sensual'],
-      isPublished: true,
-      isQuickie: false,
-    });
-    
-    // Create sample quickies (short videos)
-    await this.createVideo({
-      userId: user1.id,
-      title: 'Quick Tease in Red Lingerie',
-      description: 'A short and sweet teaser in my new outfit',
-      filePath: '/videos/quickie1.mp4',
-      thumbnailPath: 'https://images.unsplash.com/photo-1617575452143-af7aed9163c0?auto=format&fit=crop&w=240&h=427',
-      duration: 45,
-      category: 'Quickie',
-      tags: ['lingerie', 'tease', 'red'],
-      isPublished: true,
-      isQuickie: true,
-    });
-    
-    await this.createVideo({
-      userId: user2.id,
-      title: 'Playful Shower Moments',
-      description: 'Catching some fun moments in the shower',
-      filePath: '/videos/quickie2.mp4',
-      thumbnailPath: 'https://images.unsplash.com/photo-1613323593608-abc90fec84ff?auto=format&fit=crop&w=240&h=427',
-      duration: 32,
-      category: 'Quickie',
-      tags: ['shower', 'playful', 'water'],
-      isPublished: true,
-      isQuickie: true,
-    });
-    
-    await this.createVideo({
-      userId: user3.id,
-      title: 'Late Night Hotel Tease',
-      description: 'A little preview of what happens in hotel rooms',
-      filePath: '/videos/quickie3.mp4',
-      thumbnailPath: 'https://images.unsplash.com/photo-1542295669297-4d352cc77abb?auto=format&fit=crop&w=240&h=427',
-      duration: 58,
-      category: 'Quickie',
-      tags: ['hotel', 'night', 'tease'],
-      isPublished: true,
-      isQuickie: true,
-    });
-    
-    await this.createVideo({
-      userId: user4.id,
-      title: 'Poolside Flirting',
-      description: 'Flirty moments by the pool on vacation',
-      filePath: '/videos/quickie4.mp4',
-      thumbnailPath: 'https://images.unsplash.com/photo-1516522973472-f009f23bba59?auto=format&fit=crop&w=240&h=427',
-      duration: 41,
-      category: 'Quickie',
-      tags: ['pool', 'vacation', 'bikini'],
-      isPublished: true,
-      isQuickie: true,
-    });
-    
-    await this.createVideo({
-      userId: user1.id,
-      title: 'Morning Coffee Surprise',
-      description: 'How I like to start my mornings',
-      filePath: '/videos/quickie5.mp4',
-      thumbnailPath: 'https://images.unsplash.com/photo-1527203561188-dae1bc1a417f?auto=format&fit=crop&w=240&h=427',
-      duration: 38,
-      category: 'Quickie',
-      tags: ['morning', 'coffee', 'surprise'],
-      isPublished: true,
-      isQuickie: true,
-    });
-    
-    // Create sample comments
-    await this.createComment({
-      videoId: 1,
-      userId: 2,
-      content: 'Sophia is absolutely stunning in this video! The beach scenes were incredible. Can\'t wait to see more content like this!'
-    });
-    
-    await this.createComment({
-      videoId: 1,
-      userId: 3,
-      content: 'The production quality on this is incredible! I\'ve subscribed to your premium channel after seeing this.'
-    });
-    
-    await this.createComment({
-      videoId: 1,
-      userId: 1,
-      content: 'Thanks for all the love on this video! I\'m planning a sequel for next month. Make sure to subscribe so you don\'t miss it! ❤️'
-    });
-    
-    // Add views, likes, etc.
-    await this.updateVideo(1, { views: 1200000, likes: 24000, dislikes: 1000 });
-    await this.updateVideo(2, { views: 847000, likes: 18000, dislikes: 800 });
-    await this.updateVideo(3, { views: 2500000, likes: 37000, dislikes: 1500 });
-    await this.updateVideo(4, { views: 1800000, likes: 29000, dislikes: 1200 });
-    await this.updateVideo(5, { views: 4700000, likes: 58000, dislikes: 2000 });
-    await this.updateVideo(6, { views: 3900000, likes: 42000, dislikes: 1800 });
-    await this.updateVideo(7, { views: 2300000, likes: 32000, dislikes: 1100 });
-    await this.updateVideo(8, { views: 3100000, likes: 38000, dislikes: 1400 });
-    await this.updateVideo(9, { views: 3200000, likes: 41000, dislikes: 900 });
-    await this.updateVideo(10, { views: 1700000, likes: 25000, dislikes: 700 });
-    await this.updateVideo(11, { views: 4500000, likes: 62000, dislikes: 1900 });
-    await this.updateVideo(12, { views: 2800000, likes: 36000, dislikes: 1300 });
-    await this.updateVideo(13, { views: 1900000, likes: 28000, dislikes: 1100 });
-    
-    // Update comment likes
-    await this.updateComment(1, { likes: 346 });
-    await this.updateComment(2, { likes: 214 });
-    await this.updateComment(3, { likes: 528 });
   }
   
   private async updateComment(id: number, data: Partial<Comment>): Promise<Comment | undefined> {
