@@ -15,6 +15,14 @@ import Quickies from "@/pages/Quickies";
 import MyChannel from "@/pages/MyChannel";
 import Upload from "@/pages/Upload";
 import AdminPanel from "@/pages/AdminPanel";
+import Explore from "@/pages/Explore";
+import History from "@/pages/History";
+import Liked from "@/pages/Liked";
+import Bookmarks from "@/pages/Bookmarks";
+import CategoryPage from "@/pages/CategoryPage";
+import Terms from "@/pages/Terms";
+import Privacy from "@/pages/Privacy";
+import ContentPolicy from "@/pages/ContentPolicy";
 import { useAuth } from "@/context/AuthContext";
 
 function ProtectedRoute({ component: Component, adminOnly = false, ...rest }: any) {
@@ -43,13 +51,28 @@ function Router() {
         <Sidebar isOpen={sidebarOpen} />
         <main className="flex-1 ml-0 md:ml-64 transition-all duration-300" style={sidebarOpen ? {} : { marginLeft: 0 }}>
           <Switch>
+            {/* Main navigation */}
             <Route path="/" component={Home} />
             <Route path="/watch/:id" component={Watch} />
             <Route path="/quickies" component={Quickies} />
+            <Route path="/explore" component={Explore} />
+            <ProtectedRoute path="/history" component={History} />
+            
+            {/* User account routes */}
             <ProtectedRoute path="/my-channel" component={MyChannel} />
-            <Route path="/category/:categorySlug" component={Home} />
+            <ProtectedRoute path="/liked" component={Liked} />
+            <ProtectedRoute path="/bookmarks" component={Bookmarks} />
             <ProtectedRoute path="/upload" component={Upload} />
             <ProtectedRoute path="/admin" component={AdminPanel} adminOnly={true} />
+            
+            {/* Category pages */}
+            <Route path="/category/:categorySlug" component={CategoryPage} />
+            
+            {/* Legal pages */}
+            <Route path="/terms" component={Terms} />
+            <Route path="/privacy" component={Privacy} />
+            <Route path="/content-policy" component={ContentPolicy} />
+            
             {/* Fallback to 404 */}
             <Route component={NotFound} />
           </Switch>
