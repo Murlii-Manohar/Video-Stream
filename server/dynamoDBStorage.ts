@@ -132,59 +132,88 @@ export class DynamoDBStorage implements IStorage {
     if (this.initialized) return;
 
     try {
-      // First try to completely reset the database to ensure proper indexes
-      await this.resetDatabase();
-      
       // Get all table names
       const allTables = Object.values(TABLES);
       
-      // Verify all tables exist
-      const { TableNames } = await this.client.send(new ListTablesCommand({}));
+      // Verify which tables already exist
+      const { TableNames = [] } = await this.client.send(new ListTablesCommand({}));
       console.log("Current DynamoDB tables:", TableNames);
       
       // Check if any tables are missing
-      const missingTables = allTables.filter(table => !TableNames?.includes(table));
+      const missingTables = allTables.filter(table => !TableNames.includes(table));
+      
       if (missingTables.length > 0) {
-        console.log(`Still missing tables: ${missingTables.join(', ')}`);
+        console.log(`Missing tables: ${missingTables.join(', ')}`);
         
-        // Try to create missing tables
+        // Create missing tables but don't wait for them to become active
         for (const tableName of missingTables) {
           try {
             console.log(`Creating missing table ${tableName}`);
-            await this.createTable(tableName);
+            // Skip waiting for tables to be active during initialization
+            await this.createTable(tableName, true);
           } catch (error) {
             console.error(`Error creating table ${tableName}:`, error);
           }
         }
       }
 
+      // Mark as initialized even if some tables are still creating
       this.initialized = true;
       console.log("DynamoDB Storage initialized successfully");
+      
+      // The tables will continue to be created in the background
+      // and will be available when they become active
     } catch (error) {
       console.error("Failed to initialize DynamoDB Storage:", error);
       throw error;
     }
   }
 
-  private async createTable(tableName: string): Promise<void> {
+  private async createTable(tableName: string, skipWaiting = false): Promise<void> {
     const tableParams = this.getTableParams(tableName);
     
     try {
-      // Create table with timeout to avoid hanging
-      const createTablePromise = Promise.race([
-        this.client.send(new CreateTableCommand(tableParams)),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error(`Create table operation for ${tableName} timed out after 3 seconds`)), 3000)
-        )
-      ]);
-    
-      await createTablePromise;
-      console.log(`Table ${tableName} created successfully`);
+      console.log(`Attempting to create table ${tableName}`);
+      await this.client.send(new CreateTableCommand(tableParams));
+      console.log(`Table ${tableName} creation initiated successfully`);
       
-      // Don't wait for table to be active - this will happen asynchronously
-      // Just return immediately to prevent blocking startup
-      return;
-    } catch (error) {
+      if (skipWaiting) {
+        console.log(`Skipping wait for table ${tableName} to become active`);
+        return;
+      }
+      
+      // Wait for table to become active
+      console.log(`Waiting for table ${tableName} to become active...`);
+      let tableActive = false;
+      let retries = 0;
+      const maxRetries = 5; // Reducing from 10 to 5 to speed up initialization
+      
+      while (!tableActive && retries < maxRetries) {
+        try {
+          const tableDescription = await this.client.send(
+            new DescribeTableCommand({ TableName: tableName })
+          );
+          
+          if (tableDescription.Table?.TableStatus === 'ACTIVE') {
+            tableActive = true;
+            console.log(`Table ${tableName} is now active`);
+          } else {
+            retries++;
+            console.log(`Table ${tableName} status: ${tableDescription.Table?.TableStatus}, waiting (attempt ${retries}/${maxRetries})...`);
+            // Wait 1 second between checks
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        } catch (error) {
+          retries++;
+          console.log(`Error checking table ${tableName} status, retrying (${retries}/${maxRetries})...`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+      
+      if (!tableActive) {
+        console.warn(`Warning: Table ${tableName} may not be fully active yet`);
+      }
+    } catch (error: any) {
       if (error.name === 'ResourceInUseException') {
         // Table already exists, this is fine
         console.log(`Table ${tableName} already exists`);
