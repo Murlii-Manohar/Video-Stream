@@ -718,23 +718,31 @@ export class DynamoDBStorage implements IStorage {
       ? Math.max(0, ...videosResponse.Items.map(item => item.id as number))
       : 0;
     
+    // Add more debugging information
+    console.log('Creating video with input data:', JSON.stringify(video));
+    
     const newVideo: Video = {
       id: maxId + 1,
       userId: video.userId,
       title: video.title,
       description: video.description || null,
-      videoPath: video.videoPath,
+      filePath: video.filePath, // Use filePath instead of videoPath
       thumbnailPath: video.thumbnailPath || null,
       duration: video.duration || 0,
       views: 0,
       likes: 0,
+      dislikes: 0,
+      hasAds: false,
+      adUrl: null,
+      adStartTime: null,
       isQuickie: video.isQuickie || false,
-      isPrivate: video.isPrivate || false,
-      category: video.category || null,
-      tags: video.tags || null,
+      isPublished: video.isPublished !== undefined ? video.isPublished : true, // Make sure isPublished is defined
+      categories: video.categories || [],
+      tags: video.tags || [],
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
     };
+    
+    console.log('Prepared new video object for DynamoDB:', JSON.stringify(newVideo));
 
     try {
       await this.docClient.send(

@@ -503,6 +503,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
         
         console.log('Creating video with data:', JSON.stringify(videoData));
+        
+        // Add more verbose logging for debugging
+        console.log('Route validation passed, fields available:');
+        console.log('- filePath:', videoData.filePath);
+        console.log('- userId:', videoData.userId);
+        console.log('- title:', videoData.title);
+        console.log('- isQuickie:', videoData.isQuickie);
+        console.log('- isPublished:', videoData.isPublished);
+        
         const video = await storage.createVideo(videoData);
         console.log('Video created successfully:', JSON.stringify(video));
         res.status(201).json(video);
