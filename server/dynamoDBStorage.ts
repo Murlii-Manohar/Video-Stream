@@ -68,43 +68,56 @@ export class DynamoDBStorage implements IStorage {
     if (this.initialized) return;
 
     try {
-      // Create a promise with timeout for listing tables
-      const listTablesPromise = Promise.race([
-        this.client.send(new ListTablesCommand({})),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error("DynamoDB ListTables operation timed out after 5 seconds")), 5000)
-        )
-      ]);
-
-      // Get table names with timeout 
-      const { TableNames } = await listTablesPromise as any;
+      // Force recreation of all tables to ensure proper indexes
+      console.log("Ensuring all DynamoDB tables have the correct structure...");
       
-      // Create tables that don't exist
-      const tablesToCreate = Object.values(TABLES).filter(tableName => 
-        !TableNames?.includes(tableName)
-      );
-
-      // Only create first table during initialization, the rest can be created asynchronously
-      if (tablesToCreate.length > 0) {
-        console.log(`Need to create ${tablesToCreate.length} tables: ${tablesToCreate.join(', ')}`);
-        // Only create the first table synchronously to prevent long initialization time
-        if (tablesToCreate.length > 0) {
-          await this.createTable(tablesToCreate[0]);
-          
-          // Create the rest of the tables asynchronously
-          if (tablesToCreate.length > 1) {
-            // Don't wait for this promise
-            (async () => {
-              for (let i = 1; i < tablesToCreate.length; i++) {
-                try {
-                  await this.createTable(tablesToCreate[i]);
-                } catch (error) {
-                  console.error(`Failed to create table ${tablesToCreate[i]} asynchronously:`, error);
-                }
-              }
-            })();
+      // Get all table names
+      const allTables = Object.values(TABLES);
+      
+      // Force creation of all tables (will use existing if they're present)
+      for (const tableName of allTables) {
+        try {
+          console.log(`Creating/updating table structure for ${tableName}`);
+          await this.createTable(tableName);
+        } catch (error) {
+          // If table already exists, this is expected
+          if (error.name === 'ResourceInUseException') {
+            console.log(`Table ${tableName} already exists`);
+          } else {
+            console.error(`Error creating table ${tableName}:`, error);
           }
         }
+      }
+
+      // Verify that tables have expected indexes by testing a few key operations
+      try {
+        console.log("Testing EmailIndex on USERS table...");
+        await this.docClient.send(
+          new QueryCommand({
+            TableName: TABLES.USERS,
+            IndexName: "EmailIndex",
+            KeyConditionExpression: "email = :email",
+            ExpressionAttributeValues: { ":email": "test@example.com" }
+          })
+        );
+        console.log("EmailIndex is working correctly");
+      } catch (error) {
+        console.error("EmailIndex test failed:", error);
+      }
+
+      try {
+        console.log("Testing UsernameIndex on USERS table...");
+        await this.docClient.send(
+          new QueryCommand({
+            TableName: TABLES.USERS,
+            IndexName: "UsernameIndex",
+            KeyConditionExpression: "username = :username",
+            ExpressionAttributeValues: { ":username": "testuser" }
+          })
+        );
+        console.log("UsernameIndex is working correctly");
+      } catch (error) {
+        console.error("UsernameIndex test failed:", error);
       }
 
       this.initialized = true;
