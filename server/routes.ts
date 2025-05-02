@@ -443,7 +443,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/videos', requireAuth, upload.fields([
     { name: 'videoFile', maxCount: 1 },
     { name: 'thumbnailFile', maxCount: 1 }
-  ]), handleValidation(insertVideoSchema), async (req, res) => {
+  ]), async (req, res) => {
     try {
       const userId = req.session.userId as number;
       

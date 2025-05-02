@@ -207,6 +207,7 @@ export default function UploadForm({ open, onOpenChange }: UploadFormProps) {
     formData.append("description", values.description || "");
     // Add categories as JSON array
     formData.append("categories", JSON.stringify(values.categories));
+    // Convert tags to a string (it will be parsed back to array on the server)
     formData.append("tags", values.tags || "");
     formData.append("isQuickie", values.isQuickie.toString());
     
