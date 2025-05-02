@@ -332,14 +332,16 @@ export class DynamoDBStorage implements IStorage {
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     try {
+      console.log(`Searching for user with username: ${username}`);
+      // Since we don't have the UsernameIndex available, use Scan instead
       const response = await this.docClient.send(
-        new QueryCommand({
+        new ScanCommand({
           TableName: TABLES.USERS,
-          IndexName: "UsernameIndex",
-          KeyConditionExpression: "username = :username",
+          FilterExpression: "username = :username",
           ExpressionAttributeValues: { ":username": username }
         })
       );
+      console.log(`Found ${response.Items?.length || 0} users with username ${username}`);
       return (response.Items && response.Items.length > 0) ? response.Items[0] as User : undefined;
     } catch (error) {
       console.error(`Error getting user by username ${username}:`, error);
@@ -349,14 +351,16 @@ export class DynamoDBStorage implements IStorage {
 
   async getUserByEmail(email: string): Promise<User | undefined> {
     try {
+      console.log(`Searching for user with email: ${email}`);
+      // Since we don't have the EmailIndex available, use Scan instead
       const response = await this.docClient.send(
-        new QueryCommand({
+        new ScanCommand({
           TableName: TABLES.USERS,
-          IndexName: "EmailIndex",
-          KeyConditionExpression: "email = :email",
+          FilterExpression: "email = :email",
           ExpressionAttributeValues: { ":email": email }
         })
       );
+      console.log(`Found ${response.Items?.length || 0} users with email ${email}`);
       return (response.Items && response.Items.length > 0) ? response.Items[0] as User : undefined;
     } catch (error) {
       console.error(`Error getting user by email ${email}:`, error);
