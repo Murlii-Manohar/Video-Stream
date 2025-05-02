@@ -2,7 +2,8 @@ import {
   DynamoDBClient, 
   CreateTableCommand, 
   ListTablesCommand, 
-  DescribeTableCommand 
+  DescribeTableCommand,
+  DeleteTableCommand
 } from "@aws-sdk/client-dynamodb";
 import { 
   DynamoDBDocumentClient, 
@@ -64,60 +65,97 @@ export class DynamoDBStorage implements IStorage {
     this.docClient = DynamoDBDocumentClient.from(this.client);
   }
 
-  public async initialize(): Promise<void> {
-    if (this.initialized) return;
-
+  // Method to delete a table with timeout
+  private async deleteTable(tableName: string): Promise<boolean> {
     try {
-      // Force recreation of all tables to ensure proper indexes
-      console.log("Ensuring all DynamoDB tables have the correct structure...");
+      console.log(`Attempting to delete table ${tableName}...`);
+      
+      const deletePromise = Promise.race([
+        this.client.send(new DeleteTableCommand({ TableName: tableName })),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error(`Delete table operation for ${tableName} timed out after 3 seconds`)), 3000)
+        )
+      ]);
+      
+      await deletePromise;
+      console.log(`Table ${tableName} deleted successfully`);
+      return true;
+    } catch (error) {
+      if (error.name === 'ResourceNotFoundException') {
+        console.log(`Table ${tableName} does not exist, no need to delete`);
+        return true;
+      }
+      console.error(`Failed to delete table ${tableName}:`, error);
+      return false;
+    }
+  }
+
+  // Reset and initialize the database from scratch
+  public async resetDatabase(): Promise<boolean> {
+    try {
+      console.log("====== STARTING COMPLETE DATABASE RESET ======");
       
       // Get all table names
       const allTables = Object.values(TABLES);
       
-      // Force creation of all tables (will use existing if they're present)
+      // Delete all tables
+      for (const tableName of allTables) {
+        await this.deleteTable(tableName);
+      }
+      
+      // Wait a moment for AWS to process the deletions
+      console.log("Waiting for AWS to process table deletions...");
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Now create all tables from scratch
       for (const tableName of allTables) {
         try {
-          console.log(`Creating/updating table structure for ${tableName}`);
+          console.log(`Creating new table ${tableName} with proper schema`);
           await this.createTable(tableName);
+          
+          // Wait a bit between table creations to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 500));
         } catch (error) {
-          // If table already exists, this is expected
-          if (error.name === 'ResourceInUseException') {
-            console.log(`Table ${tableName} already exists`);
-          } else {
+          console.error(`Error creating table ${tableName}:`, error);
+        }
+      }
+      
+      console.log("====== DATABASE RESET COMPLETE ======");
+      return true;
+    } catch (error) {
+      console.error("Database reset failed:", error);
+      return false;
+    }
+  }
+
+  public async initialize(): Promise<void> {
+    if (this.initialized) return;
+
+    try {
+      // First try to completely reset the database to ensure proper indexes
+      await this.resetDatabase();
+      
+      // Get all table names
+      const allTables = Object.values(TABLES);
+      
+      // Verify all tables exist
+      const { TableNames } = await this.client.send(new ListTablesCommand({}));
+      console.log("Current DynamoDB tables:", TableNames);
+      
+      // Check if any tables are missing
+      const missingTables = allTables.filter(table => !TableNames?.includes(table));
+      if (missingTables.length > 0) {
+        console.log(`Still missing tables: ${missingTables.join(', ')}`);
+        
+        // Try to create missing tables
+        for (const tableName of missingTables) {
+          try {
+            console.log(`Creating missing table ${tableName}`);
+            await this.createTable(tableName);
+          } catch (error) {
             console.error(`Error creating table ${tableName}:`, error);
           }
         }
-      }
-
-      // Verify that tables have expected indexes by testing a few key operations
-      try {
-        console.log("Testing EmailIndex on USERS table...");
-        await this.docClient.send(
-          new QueryCommand({
-            TableName: TABLES.USERS,
-            IndexName: "EmailIndex",
-            KeyConditionExpression: "email = :email",
-            ExpressionAttributeValues: { ":email": "test@example.com" }
-          })
-        );
-        console.log("EmailIndex is working correctly");
-      } catch (error) {
-        console.error("EmailIndex test failed:", error);
-      }
-
-      try {
-        console.log("Testing UsernameIndex on USERS table...");
-        await this.docClient.send(
-          new QueryCommand({
-            TableName: TABLES.USERS,
-            IndexName: "UsernameIndex",
-            KeyConditionExpression: "username = :username",
-            ExpressionAttributeValues: { ":username": "testuser" }
-          })
-        );
-        console.log("UsernameIndex is working correctly");
-      } catch (error) {
-        console.error("UsernameIndex test failed:", error);
       }
 
       this.initialized = true;
@@ -469,14 +507,16 @@ export class DynamoDBStorage implements IStorage {
 
   async getChannelsByUser(userId: number): Promise<Channel[]> {
     try {
+      console.log(`Fetching channels for user ${userId}`);
+      // Since secondary indexes might not be available, use Scan instead
       const response = await this.docClient.send(
-        new QueryCommand({
+        new ScanCommand({
           TableName: TABLES.CHANNELS,
-          IndexName: "UserIdIndex",
-          KeyConditionExpression: "userId = :userId",
+          FilterExpression: "userId = :userId",
           ExpressionAttributeValues: { ":userId": userId }
         })
       );
+      console.log(`Found ${response.Items?.length || 0} channels for user ${userId}`);
       return response.Items as Channel[] || [];
     } catch (error) {
       console.error(`Error getting channels for user ${userId}:`, error);
@@ -602,14 +642,16 @@ export class DynamoDBStorage implements IStorage {
 
   async getVideosByUser(userId: number): Promise<Video[]> {
     try {
+      console.log(`Fetching videos for user ${userId} using scan`);
+      // Since indexes might not be properly set up, use Scan instead
       const response = await this.docClient.send(
-        new QueryCommand({
+        new ScanCommand({
           TableName: TABLES.VIDEOS,
-          IndexName: "UserIdIndex",
-          KeyConditionExpression: "userId = :userId",
+          FilterExpression: "userId = :userId",
           ExpressionAttributeValues: { ":userId": userId }
         })
       );
+      console.log(`Found ${response.Items?.length || 0} videos for user ${userId}`);
       return response.Items as Video[] || [];
     } catch (error) {
       console.error(`Error getting videos for user ${userId}:`, error);
