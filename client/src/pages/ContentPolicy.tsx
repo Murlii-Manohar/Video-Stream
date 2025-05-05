@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 
 export default function ContentPolicy() {
@@ -6,14 +5,6 @@ export default function ContentPolicy() {
   
   return (
     <div className="container py-8 max-w-4xl mx-auto">
-      <Button 
-        variant="ghost" 
-        className="mb-4"
-        onClick={() => navigate("/")}
-      >
-        &larr; Back to Home
-      </Button>
-      
       <div className="prose prose-lg dark:prose-invert max-w-none">
         <h1>Content Policy</h1>
         
