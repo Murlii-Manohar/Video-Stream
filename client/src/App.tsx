@@ -9,6 +9,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/context/AuthContext";
 import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
+import { AgeVerification } from "@/components/AgeVerification";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
 import Watch from "@/pages/Watch";
