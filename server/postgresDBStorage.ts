@@ -457,7 +457,7 @@ export class PostgresDBStorage implements IStorage {
     }
   }
 
-  async toggleVideoAds(id: number, hasAds: boolean, adUrl?: string, adStartTime?: number): Promise<Video | undefined> {
+  async toggleVideoAds(id: number, hasAds: boolean, adUrl?: string, adStartTime?: number, adSkippable?: boolean): Promise<Video | undefined> {
     if (!this.initialized) await this.initialize();
     
     try {
@@ -466,6 +466,7 @@ export class PostgresDBStorage implements IStorage {
           hasAds,
           adUrl: adUrl || null,
           adStartTime: adStartTime || null,
+          adSkippable: adSkippable !== undefined ? adSkippable : true,
           updatedAt: new Date()
         })
         .where(eq(videos.id, id))

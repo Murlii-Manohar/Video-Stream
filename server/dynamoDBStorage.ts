@@ -1388,14 +1388,15 @@ export class DynamoDBStorage implements IStorage {
   }
   
   // Video ad toggle method
-  async toggleVideoAds(id: number, hasAds: boolean, adUrl?: string, adStartTime?: number): Promise<Video | undefined> {
+  async toggleVideoAds(id: number, hasAds: boolean, adUrl?: string, adStartTime?: number, adSkippable?: boolean): Promise<Video | undefined> {
     const video = await this.getVideo(id);
     if (!video) return undefined;
     
     const updateData: Partial<Video> = {
       hasAds,
       adUrl: hasAds ? adUrl || null : null,
-      adStartTime: hasAds && adStartTime !== undefined ? adStartTime : null
+      adStartTime: hasAds && adStartTime !== undefined ? adStartTime : null,
+      adSkippable: hasAds ? (adSkippable !== undefined ? adSkippable : video.adSkippable) : true
     };
     
     return this.updateVideo(id, updateData);
