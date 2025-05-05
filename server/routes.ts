@@ -1878,7 +1878,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Ad Management Routes
+  // Site Settings Management Routes
+  
+  // Get all site settings
+  app.get('/api/admin/site-settings', requireAdmin, async (req, res) => {
+    try {
+      const settings = await storage.getSiteSettings();
+      if (!settings) {
+        return res.status(404).json({ message: 'Site settings not found' });
+      }
+      
+      res.json(settings);
+    } catch (error) {
+      console.error('Get site settings error:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
+  
+  // Update site settings
+  app.put('/api/admin/site-settings', requireAdmin, async (req, res) => {
+    try {
+      const settings = await storage.updateSiteSettings(req.body);
+      res.json({
+        ...settings,
+        message: 'Site settings updated successfully'
+      });
+    } catch (error) {
+      console.error('Update site settings error:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
+  
+  // Upload intro video
+  app.post('/api/admin/upload-intro-video', requireAdmin, upload.single('file'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: 'No file uploaded' });
+      }
+      
+      const videoFilePath = `/uploads/${req.file.filename}`;
+      
+      // For local uploads, we'll use a fixed duration
+      // In a production environment, you would analyze the video to get its actual duration
+      const duration = 10; // Default 10 seconds duration
+      
+      res.status(201).json({
+        filePath: videoFilePath,
+        duration,
+        message: 'Intro video uploaded successfully'
+      });
+    } catch (error) {
+      console.error('Upload intro video error:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
+  
+  // Ad Management Routes (Legacy endpoints for backward compatibility)
   
   // Get site ad settings
   app.get('/api/admin/ads/site', requireAdmin, async (req, res) => {
