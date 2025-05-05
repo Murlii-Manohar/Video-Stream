@@ -45,13 +45,27 @@ function ProtectedRoute({ component: Component, adminOnly = false, ...rest }: an
 }
 
 function Router() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  // Default to closed on mobile, open on desktop
+  const isDesktop = window.innerWidth >= 768;
+  const [sidebarOpen, setSidebarOpen] = useState(isDesktop);
   
-  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
+  const toggleSidebar = () => {
+    console.log('Toggling sidebar from', sidebarOpen, 'to', !sidebarOpen);
+    setSidebarOpen(prevState => !prevState);
+  };
+  
+  // Add an overlay when sidebar is open on mobile
+  const Overlay = () => (
+    <div 
+      className={`fixed inset-0 bg-black/50 z-30 md:hidden ${sidebarOpen ? 'block' : 'hidden'}`}
+      onClick={toggleSidebar}
+    />
+  );
   
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-300 overflow-x-hidden">
       <Header toggleSidebar={toggleSidebar} />
+      <Overlay />
       <div className="flex relative">
         <Sidebar isOpen={sidebarOpen} />
         <main className="flex-1 w-full transition-all duration-300 min-h-[calc(100vh-64px)] md:ml-64">

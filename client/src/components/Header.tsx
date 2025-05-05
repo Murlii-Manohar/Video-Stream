@@ -64,7 +64,11 @@ export function Header({ toggleSidebar }: HeaderProps) {
             variant="ghost" 
             size="icon" 
             className="mr-4 rounded-full hover:bg-muted"
-            onClick={toggleSidebar}
+            onClick={() => {
+              console.log('Menu button clicked');
+              toggleSidebar();
+            }}
+            type="button"
           >
             <MenuIcon className="h-5 w-5" />
           </Button>

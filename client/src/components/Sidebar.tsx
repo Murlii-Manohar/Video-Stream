@@ -51,8 +51,8 @@ export function Sidebar({ isOpen }: SidebarProps) {
   const [categoriesOpen, setCategoriesOpen] = React.useState(false);
 
   // Fetch user subscriptions if logged in
-  const { data: subscriptions } = useQuery({
-    queryKey: user ? ['/api/users', user.id, 'subscriptions'] : null,
+  const { data: subscriptions = [] } = useQuery<any[]>({
+    queryKey: ['/api/users', user?.id, 'subscriptions'],
     enabled: !!user,
   });
 
@@ -88,11 +88,14 @@ export function Sidebar({ isOpen }: SidebarProps) {
     );
   };
 
+  // Log the isOpen state
+  console.log('Sidebar render, isOpen:', isOpen);
+  
   return (
     <aside 
       className={cn(
         "fixed left-0 top-16 h-[calc(100vh-64px)] w-64 bg-background border-r border-border overflow-y-auto transition-all duration-300 z-40",
-        isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0 md:w-0"
       )}
     >
       <nav className="p-4">
@@ -177,7 +180,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
           </Collapsible>
         </div>
         
-        {user && subscriptions && Array.isArray(subscriptions) && subscriptions.length > 0 && (
+        {user && subscriptions.length > 0 && (
           <div className="mb-6">
             <h3 className="font-medium text-sm uppercase text-muted-foreground mb-2">Subscriptions</h3>
             <ul className="space-y-2">
