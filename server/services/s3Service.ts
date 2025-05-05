@@ -175,18 +175,61 @@ export function generateS3FileKey(
 }
 
 /**
+ * Creates a bucket if it doesn't exist
+ * @param bucketName The name of the bucket to create
+ */
+async function createBucketIfNotExists(bucketName: string): Promise<void> {
+  try {
+    // Check if the bucket exists by listing its contents
+    await s3Client.send(
+      new ListObjectsV2Command({
+        Bucket: bucketName,
+        MaxKeys: 1
+      })
+    );
+    log(`Bucket ${bucketName} already exists`, 's3Service');
+  } catch (error: any) {
+    // If the bucket doesn't exist, create it
+    if (error.$metadata?.httpStatusCode === 404) {
+      try {
+        log(`Creating bucket: ${bucketName}`, 's3Service');
+        
+        // Create the bucket
+        await s3Client.send(
+          new CreateBucketCommand({
+            Bucket: bucketName
+          })
+        );
+        
+        log(`Bucket ${bucketName} created successfully`, 's3Service');
+      } catch (createError) {
+        log(`Error creating bucket ${bucketName}: ${createError}`, 's3Service');
+        throw createError;
+      }
+    } else {
+      log(`Error checking bucket ${bucketName}: ${error}`, 's3Service');
+      throw error;
+    }
+  }
+}
+
+/**
  * Initializes the S3 service
  */
 export async function initializeS3Service(): Promise<void> {
   try {
-    // Check if the buckets exist, or create them
     log('Initializing S3 service...', 's3Service');
     
-    // List some files to make sure credentials are working
-    await listFilesInS3('', false);
-    await listFilesInS3('', true);
-    
-    log('S3 service initialized successfully', 's3Service');
+    // Create buckets if they don't exist
+    try {
+      await createBucketIfNotExists(BUCKET_NAME);
+      await createBucketIfNotExists(THUMBNAIL_BUCKET_NAME);
+      
+      log('S3 service initialized successfully', 's3Service');
+    } catch (bucketError) {
+      log(`Failed to create or check buckets: ${bucketError}`, 's3Service');
+      throw bucketError;
+    }
   } catch (error) {
     log(`Error initializing S3 service: ${error}`, 's3Service');
     throw error;

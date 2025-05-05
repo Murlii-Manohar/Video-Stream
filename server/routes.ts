@@ -18,12 +18,17 @@ import { ZodError, z } from "zod";
 import session from "express-session";
 import MemoryStore from "memorystore";
 import { initializeEmailService, sendVerificationEmail, verifyCode } from "./services/emailService";
+import { uploadVideo, getVideoWithSignedUrls, deleteVideo, updateVideo } from "./services/videoService";
+import { initializeS3Service } from "./services/s3Service";
 
 // Create a memory store for sessions
 const SessionStore = MemoryStore(session);
 
-// Initialize email service
+// Initialize services
 initializeEmailService();
+initializeS3Service().catch(error => {
+  console.error('Failed to initialize S3 service:', error);
+});
 
 // Setup file storage for video uploads
 const storage_dir = path.resolve(process.cwd(), "uploaded_files");
@@ -404,36 +409,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/videos/:id', async (req, res) => {
     try {
       const videoId = parseInt(req.params.id);
-      const video = await storage.getVideo(videoId);
       
-      if (!video) {
-        return res.status(404).json({ message: 'Video not found' });
-      }
-      
-      // Increment view count
-      await storage.incrementVideoViews(videoId);
-      
-      // Add to watch history if user is logged in
-      if (req.session.userId) {
-        await storage.createVideoHistory({
-          userId: req.session.userId,
-          videoId
+      try {
+        // Use our S3 service to get video with signed URLs
+        const { video, videoUrl, thumbnailUrl } = await getVideoWithSignedUrls(videoId);
+        
+        if (!video) {
+          return res.status(404).json({ message: 'Video not found' });
+        }
+        
+        // Increment view count
+        await storage.incrementVideoViews(videoId);
+        
+        // Add to watch history if user is logged in
+        if (req.session.userId) {
+          await storage.createVideoHistory({
+            userId: req.session.userId,
+            videoId
+          });
+        }
+        
+        // Get creator info
+        const creator = await storage.getUser(video.userId);
+        
+        res.json({
+          ...video,
+          videoUrl,
+          thumbnailUrl,
+          creator: creator ? {
+            id: creator.id,
+            username: creator.username,
+            displayName: creator.displayName,
+            profileImage: creator.profileImage,
+            subscriberCount: creator.subscriberCount
+          } : null
+        });
+      } catch (s3Error) {
+        console.error('S3 error:', s3Error);
+        
+        // Fallback to regular storage if S3 fails (temporary during migration)
+        const video = await storage.getVideo(videoId);
+        
+        if (!video) {
+          return res.status(404).json({ message: 'Video not found' });
+        }
+        
+        // Increment view count
+        await storage.incrementVideoViews(videoId);
+        
+        // Get creator info
+        const creator = await storage.getUser(video.userId);
+        
+        res.json({
+          ...video,
+          creator: creator ? {
+            id: creator.id,
+            username: creator.username,
+            displayName: creator.displayName,
+            profileImage: creator.profileImage,
+            subscriberCount: creator.subscriberCount
+          } : null
         });
       }
-      
-      // Get creator info
-      const creator = await storage.getUser(video.userId);
-      
-      res.json({
-        ...video,
-        creator: creator ? {
-          id: creator.id,
-          username: creator.username,
-          displayName: creator.displayName,
-          profileImage: creator.profileImage,
-          subscriberCount: creator.subscriberCount
-        } : null
-      });
     } catch (error) {
       console.error('Get video error:', error);
       res.status(500).json({ message: 'Server error' });
@@ -456,12 +493,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const videoFile = files['videoFile'][0];
-      let thumbnailPath = '';
+      let thumbnailFile = null;
       
       // Check if thumbnail was uploaded
       if (files['thumbnailFile'] && files['thumbnailFile'].length > 0) {
-        const thumbnailFile = files['thumbnailFile'][0];
-        thumbnailPath = `/uploads/${thumbnailFile.filename}`;
+        thumbnailFile = files['thumbnailFile'][0];
       }
       
       // Handle boolean conversion
@@ -493,27 +529,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Validate with schema
         const validatedData = insertVideoSchema.parse(req.body);
         
-        // Create the complete video data with the required fields and ensure isPublished is true
+        // Set up data for S3 upload
         const videoData = {
           ...validatedData,
           userId,
-          filePath: `/uploads/${videoFile.filename}`,
-          thumbnailPath: thumbnailPath || null,
           isPublished: true // Force all uploaded videos to be published
         };
         
-        console.log('Creating video with data:', JSON.stringify(videoData));
+        console.log('Uploading video to S3...');
         
-        // Add more verbose logging for debugging
-        console.log('Route validation passed, fields available:');
-        console.log('- filePath:', videoData.filePath);
-        console.log('- userId:', videoData.userId);
-        console.log('- title:', videoData.title);
-        console.log('- isQuickie:', videoData.isQuickie);
-        console.log('- isPublished:', videoData.isPublished);
+        // Use our videoService to upload to S3 and create the video record
+        const video = await uploadVideo(
+          videoFile.path, 
+          thumbnailFile ? thumbnailFile.path : null,
+          videoData
+        );
         
-        const video = await storage.createVideo(videoData);
-        console.log('Video created successfully:', JSON.stringify(video));
+        console.log('Video created and uploaded successfully:', JSON.stringify(video));
         res.status(201).json(video);
       } catch (validationError) {
         if (validationError instanceof ZodError) {
@@ -1075,19 +1107,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const videoId = parseInt(req.params.id);
       
-      const video = await storage.getVideo(videoId);
-      if (!video) {
-        return res.status(404).json({ message: 'Video not found' });
+      try {
+        // Use our video service to delete from S3 and database
+        const deleted = await deleteVideo(videoId);
+        
+        if (!deleted) {
+          return res.status(500).json({ message: 'Failed to delete video' });
+        }
+        
+        res.json({ message: 'Video deleted successfully' });
+      } catch (s3Error) {
+        console.error('S3 error during delete:', s3Error);
+        
+        // Fallback to storage method if S3 fails (temporary during migration)
+        const video = await storage.getVideo(videoId);
+        if (!video) {
+          return res.status(404).json({ message: 'Video not found' });
+        }
+        
+        const deleted = await storage.deleteVideo(videoId);
+        
+        if (!deleted) {
+          return res.status(500).json({ message: 'Failed to delete video' });
+        }
+        
+        res.json({ message: 'Video deleted successfully (fallback)' });
       }
-      
-      // Use storage method to delete video and all related data
-      const deleted = await storage.deleteVideo(videoId);
-      
-      if (!deleted) {
-        return res.status(500).json({ message: 'Failed to delete video' });
-      }
-      
-      res.json({ message: 'Video deleted successfully' });
     } catch (error) {
       console.error('Delete video error:', error);
       res.status(500).json({ message: 'Server error' });
