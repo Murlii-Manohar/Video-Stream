@@ -653,6 +653,35 @@ export class PostgresDBStorage implements IStorage {
       throw error;
     }
   }
+  
+  async deleteVideoHistory(id: number): Promise<boolean> {
+    if (!this.initialized) await this.initialize();
+    
+    try {
+      const result = await this.db.delete(videoHistory)
+        .where(eq(videoHistory.id, id))
+        .returning();
+      
+      return result.length > 0;
+    } catch (error) {
+      console.error(`Error deleting video history with ID ${id}:`, error);
+      return false;
+    }
+  }
+  
+  async clearVideoHistoryByUser(userId: number): Promise<boolean> {
+    if (!this.initialized) await this.initialize();
+    
+    try {
+      await this.db.delete(videoHistory)
+        .where(eq(videoHistory.userId, userId));
+      
+      return true;
+    } catch (error) {
+      console.error(`Error clearing video history for user ${userId}:`, error);
+      return false;
+    }
+  }
 
   // Site settings methods
   
