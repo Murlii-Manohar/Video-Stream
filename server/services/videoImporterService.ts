@@ -9,6 +9,10 @@ enum VideoSourceType {
   Vimeo = 'vimeo',
   PornHub = 'pornhub',
   XVideos = 'xvideos',
+  EPorner = 'eporner',
+  FPO = 'fpo',
+  RedTube = 'redtube',
+  XNXX = 'xnxx',
   Generic = 'generic'
 }
 
@@ -38,254 +42,16 @@ function detectSourceType(url: string): VideoSourceType {
     return VideoSourceType.PornHub;
   } else if (domain.includes('xvideos')) {
     return VideoSourceType.XVideos;
+  } else if (domain.includes('eporner')) {
+    return VideoSourceType.EPorner;
+  } else if (domain.includes('fpo.xxx') || domain.includes('fpo')) {
+    return VideoSourceType.FPO;
+  } else if (domain.includes('redtube')) {
+    return VideoSourceType.RedTube;
+  } else if (domain.includes('xnxx')) {
+    return VideoSourceType.XNXX;
   } else {
     return VideoSourceType.Generic;
-  }
-}
-
-/**
- * Safely extracts a value using a selector from a Cheerio instance
- */
-function extractWithSelector($: cheerio.CheerioAPI, selector: string, attribute?: string): string {
-  try {
-    const element = $(selector);
-    if (!element.length) return '';
-    
-    if (attribute) {
-      return element.attr(attribute) || '';
-    } else {
-      return element.text().trim();
-    }
-  } catch (error) {
-    log(`Error extracting with selector ${selector}: ${error}`, 'videoImporter');
-    return '';
-  }
-}
-
-/**
- * Scrapes videos from a PornHub source
- */
-async function scrapePornHub(url: string, count: number = 5): Promise<ScrapedVideo[]> {
-  try {
-    log(`Scraping PornHub content from ${url}`, 'videoImporter');
-    const response = await axios.get(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-        'DNT': '1',
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
-        'Cache-Control': 'max-age=0'
-      }
-    });
-    
-    const $ = cheerio.load(response.data);
-    const videos: ScrapedVideo[] = [];
-    
-    // Find all video elements
-    const videoElements = $('div.videoblock');
-    
-    // Process only the requested number of videos
-    for (let i = 0; i < Math.min(count, videoElements.length); i++) {
-      const element = videoElements.eq(i);
-      
-      // Extract metadata from the element
-      const title = extractWithSelector(element, 'span.title a');
-      const thumbnailPath = extractWithSelector(element, 'img', 'data-src') || extractWithSelector(element, 'img', 'src');
-      const durationText = extractWithSelector(element, 'var.duration');
-      const duration = convertDurationToSeconds(durationText);
-      
-      // Generate a direct video URL using metadata
-      // For safety, we reference the thumbnail rather than attempt to get actual video files
-      const videoId = thumbnailPath.match(/i=(.*?)\//)?.[1] || '';
-      const filePath = thumbnailPath; // Only using thumbnail URL as reference, not actual video
-      
-      if (title && filePath) {
-        // Use content tagging service to enhance metadata
-        const { categories, tags } = tagContent({
-          title,
-          description: '',
-          duration: duration || 0
-        });
-        
-        videos.push({
-          title,
-          filePath,
-          thumbnailPath,
-          duration,
-          categories,
-          tags,
-          isQuickie: duration !== undefined && duration <= 120 // Mark as quickie if under 2 minutes
-        });
-      }
-    }
-    
-    return videos;
-  } catch (error) {
-    log(`Error scraping PornHub: ${error}`, 'videoImporter');
-    return [];
-  }
-}
-
-/**
- * Scrapes videos from an XVideos source
- */
-async function scrapeXVideos(url: string, count: number = 5): Promise<ScrapedVideo[]> {
-  try {
-    log(`Scraping XVideos content from ${url}`, 'videoImporter');
-    const response = await axios.get(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-        'DNT': '1',
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
-        'Cache-Control': 'max-age=0'
-      }
-    });
-    
-    const $ = cheerio.load(response.data);
-    const videos: ScrapedVideo[] = [];
-    
-    // Find all video elements
-    const videoElements = $('div.thumb-block');
-    
-    // Process only the requested number of videos
-    for (let i = 0; i < Math.min(count, videoElements.length); i++) {
-      const element = videoElements.eq(i);
-      
-      // Extract metadata from the element
-      const title = extractWithSelector(element, 'p.title a');
-      const thumbnailPath = extractWithSelector(element, 'img', 'data-src') || extractWithSelector(element, 'img', 'src');
-      const durationText = extractWithSelector(element, 'span.duration');
-      const duration = convertDurationToSeconds(durationText);
-      
-      // Use thumbnail as reference
-      const filePath = thumbnailPath;
-      
-      if (title && filePath) {
-        // Use content tagging service to enhance metadata
-        const { categories, tags } = tagContent({
-          title,
-          description: '',
-          duration: duration || 0
-        });
-        
-        videos.push({
-          title,
-          filePath,
-          thumbnailPath,
-          duration,
-          categories,
-          tags,
-          isQuickie: duration !== undefined && duration <= 120 // Mark as quickie if under 2 minutes
-        });
-      }
-    }
-    
-    return videos;
-  } catch (error) {
-    log(`Error scraping XVideos: ${error}`, 'videoImporter');
-    return [];
-  }
-}
-
-/**
- * Generic scraper for any site
- */
-async function scrapeGeneric(url: string, count: number = 5): Promise<ScrapedVideo[]> {
-  try {
-    log(`Scraping generic content from ${url}`, 'videoImporter');
-    const response = await axios.get(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-      }
-    });
-    
-    const $ = cheerio.load(response.data);
-    const videos: ScrapedVideo[] = [];
-    
-    // Look for common video patterns
-    const videoElements = $('video, iframe[src*="youtube"], iframe[src*="vimeo"], div[class*="video"], article, .video-container');
-    
-    // Process only the requested number of videos
-    let processedCount = 0;
-    videoElements.each((_, element) => {
-      if (processedCount >= count) return false;
-      
-      const $element = $(element);
-      
-      // Try to extract title from various sources
-      let title = '';
-      if ($element.attr('title')) {
-        title = $element.attr('title') || '';
-      } else if ($element.attr('alt')) {
-        title = $element.attr('alt') || '';
-      } else if ($element.attr('data-title')) {
-        title = $element.attr('data-title') || '';
-      } else {
-        // Look for nearby headings
-        const heading = $element.prev('h1, h2, h3, h4, h5, h6, .title, .video-title');
-        if (heading.length) {
-          title = heading.text().trim();
-        }
-      }
-      
-      // Try to find thumbnail
-      let thumbnailPath = '';
-      if ($element.is('video') && $element.attr('poster')) {
-        thumbnailPath = $element.attr('poster') || '';
-      } else {
-        // Look for nearby images
-        const img = $element.find('img').first();
-        if (img.length) {
-          thumbnailPath = img.attr('src') || '';
-        }
-      }
-      
-      // Use source if it's a video element
-      let filePath = '';
-      if ($element.is('video')) {
-        const source = $element.find('source').first();
-        if (source.length && source.attr('src')) {
-          filePath = source.attr('src') || '';
-        } else if ($element.attr('src')) {
-          filePath = $element.attr('src') || '';
-        }
-      } else if ($element.is('iframe') && $element.attr('src')) {
-        filePath = $element.attr('src') || '';
-      }
-      
-      // If we found enough info, add to results
-      if (title && (filePath || thumbnailPath)) {
-        const thumbToUse = thumbnailPath || filePath;
-        const pathToUse = filePath || thumbnailPath;
-        
-        // Use content tagging service to enhance metadata
-        const { categories, tags } = tagContent({
-          title,
-          description: '',
-          duration: 0
-        });
-        
-        videos.push({
-          title,
-          filePath: pathToUse,
-          thumbnailPath: thumbToUse,
-          categories,
-          tags
-        });
-        
-        processedCount++;
-      }
-    });
-    
-    return videos;
-  } catch (error) {
-    log(`Error scraping generic site: ${error}`, 'videoImporter');
-    return [];
   }
 }
 
@@ -316,6 +82,224 @@ function convertDurationToSeconds(durationStr: string): number | undefined {
 }
 
 /**
+ * Scrapes videos from FPO site
+ */
+async function scrapeFPO(url: string, count: number = 5): Promise<ScrapedVideo[]> {
+  try {
+    log(`Scraping FPO content from ${url}`, 'videoImporter');
+    const response = await axios.get(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5'
+      }
+    });
+    
+    const $ = cheerio.load(response.data);
+    const videos: ScrapedVideo[] = [];
+    
+    // FPO uses various selectors depending on the page
+    const videoElements = $('li.video, div.thumb, div.vidcont');
+    
+    if (videoElements.length === 0) {
+      log(`No videos found with primary selectors, trying alternatives`, 'videoImporter');
+      // Try alternative selectors
+      const alternativeElements = $('div.content div.video, article, div[class*="video"]');
+      
+      if (alternativeElements.length > 0) {
+        alternativeElements.each((i, element) => {
+          if (i >= count) return false;
+          
+          // Extract video information
+          let title = '';
+          let thumbnailPath = '';
+          let durationText = '';
+          
+          // Try to get title
+          const titleEl = $(element).find('h2, h3, .title, [class*="title"]').first();
+          if (titleEl.length > 0) {
+            title = titleEl.text().trim();
+          } else {
+            // Try to get title from links
+            const linkEl = $(element).find('a').first();
+            if (linkEl.length > 0) {
+              title = linkEl.attr('title') || linkEl.text().trim();
+            }
+          }
+          
+          // Try to get thumbnail
+          const imgEl = $(element).find('img').first();
+          if (imgEl.length > 0) {
+            thumbnailPath = imgEl.attr('data-src') || imgEl.attr('src') || '';
+          }
+          
+          // Try to get duration
+          const durationEl = $(element).find('.duration, [class*="duration"]').first();
+          if (durationEl.length > 0) {
+            durationText = durationEl.text().trim();
+          }
+          
+          const duration = convertDurationToSeconds(durationText);
+          
+          if (title && thumbnailPath) {
+            // Get categories and tags
+            const { categories, tags } = tagContent({
+              title,
+              description: '',
+              duration: duration || 0
+            });
+            
+            videos.push({
+              title,
+              filePath: thumbnailPath, // Use thumbnail as reference
+              thumbnailPath,
+              duration,
+              categories,
+              tags,
+              isQuickie: duration !== undefined && duration <= 120
+            });
+          }
+        });
+      }
+    } else {
+      // Process standard video elements
+      videoElements.each((i, element) => {
+        if (i >= count) return false;
+        
+        let title = '';
+        let thumbnailPath = '';
+        let durationText = '';
+        
+        // Get title
+        const titleEl = $(element).find('h2, h3, .title, [class*="title"], a[title]').first();
+        if (titleEl.length > 0) {
+          title = titleEl.attr('title') || titleEl.text().trim();
+        }
+        
+        // Get thumbnail
+        const imgEl = $(element).find('img').first();
+        if (imgEl.length > 0) {
+          thumbnailPath = imgEl.attr('data-src') || imgEl.attr('src') || '';
+        }
+        
+        // Get duration
+        const durationEl = $(element).find('.duration, [class*="duration"]').first();
+        if (durationEl.length > 0) {
+          durationText = durationEl.text().trim();
+        }
+        
+        const duration = convertDurationToSeconds(durationText);
+        
+        if (title && thumbnailPath) {
+          // Get categories and tags
+          const { categories, tags } = tagContent({
+            title,
+            description: '',
+            duration: duration || 0
+          });
+          
+          videos.push({
+            title,
+            filePath: thumbnailPath, // Use thumbnail as reference
+            thumbnailPath,
+            duration,
+            categories,
+            tags,
+            isQuickie: duration !== undefined && duration <= 120
+          });
+        }
+      });
+    }
+    
+    log(`Found ${videos.length} videos from FPO source`, 'videoImporter');
+    return videos;
+  } catch (error) {
+    log(`Error scraping FPO: ${error}`, 'videoImporter');
+    return [];
+  }
+}
+
+/**
+ * Generic scraper for any adult site
+ */
+async function scrapeGeneric(url: string, count: number = 5): Promise<ScrapedVideo[]> {
+  try {
+    log(`Scraping generic content from ${url}`, 'videoImporter');
+    const response = await axios.get(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      }
+    });
+    
+    const $ = cheerio.load(response.data);
+    const videos: ScrapedVideo[] = [];
+    
+    // Looking for common patterns across adult sites
+    const videoElements = $('div[class*="video"], div[class*="thumb"], article, .video-container, li.video, .vidcont');
+    
+    let processedCount = 0;
+    videoElements.each((_, element) => {
+      if (processedCount >= count) return false;
+      
+      let title = '';
+      let thumbnailPath = '';
+      let durationText = '';
+      
+      // Try to extract title
+      const titleEl = $(element).find('h2, h3, .title, [class*="title"], a[title]').first();
+      if (titleEl.length > 0) {
+        title = titleEl.attr('title') || titleEl.text().trim();
+      } else {
+        // Try other sources for title
+        const alt = $(element).find('img').attr('alt');
+        if (alt) title = alt;
+      }
+      
+      // Try to extract thumbnail
+      const imgEl = $(element).find('img').first();
+      if (imgEl.length > 0) {
+        thumbnailPath = imgEl.attr('data-src') || imgEl.attr('src') || '';
+      }
+      
+      // Try to extract duration
+      const durationEl = $(element).find('.duration, [class*="duration"], .time, [class*="time"]').first();
+      if (durationEl.length > 0) {
+        durationText = durationEl.text().trim();
+      }
+      
+      const duration = convertDurationToSeconds(durationText);
+      
+      if (title && thumbnailPath) {
+        // Get categories and tags
+        const { categories, tags } = tagContent({
+          title,
+          description: '',
+          duration: duration || 0
+        });
+        
+        videos.push({
+          title,
+          filePath: thumbnailPath, // Use thumbnail as reference
+          thumbnailPath,
+          duration,
+          categories,
+          tags,
+          isQuickie: duration !== undefined && duration <= 120
+        });
+        
+        processedCount++;
+      }
+    });
+    
+    log(`Found ${videos.length} videos from generic source`, 'videoImporter');
+    return videos;
+  } catch (error) {
+    log(`Error scraping generic site: ${error}`, 'videoImporter');
+    return [];
+  }
+}
+
+/**
  * Main function to import videos from a source
  */
 export async function importVideosFromUrl(url: string, count: number = 5): Promise<ScrapedVideo[]> {
@@ -336,10 +320,8 @@ export async function importVideosFromUrl(url: string, count: number = 5): Promi
     log(`Detected source type: ${sourceType} for URL: ${url}`, 'videoImporter');
     
     switch (sourceType) {
-      case VideoSourceType.PornHub:
-        return await scrapePornHub(url, count);
-      case VideoSourceType.XVideos:
-        return await scrapeXVideos(url, count);
+      case VideoSourceType.FPO:
+        return await scrapeFPO(url, count);
       default:
         return await scrapeGeneric(url, count);
     }
