@@ -10,6 +10,8 @@ type AuthUser = {
   profileImage?: string;
   bio?: string;
   subscriberCount?: number;
+  isVerified?: boolean;
+  isAdmin?: boolean;
 };
 
 type AuthContextType = {
@@ -19,6 +21,7 @@ type AuthContextType = {
   login: (email: string, password: string) => Promise<void>;
   register: (userData: any) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
   sendVerificationCode: (email: string) => Promise<boolean>;
   verifyEmail: (email: string, code: string) => Promise<boolean>;
   clearError: () => void;
@@ -123,6 +126,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const refreshUser = async () => {
+    try {
+      const response = await fetch("/api/auth/me", {
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const userData = await response.json();
+        setUser(userData);
+        return userData;
+      }
+    } catch (error) {
+      console.error("User refresh error:", error);
+      setError(error instanceof Error ? error.message : "Failed to refresh user data");
+    }
+  };
+
   const clearError = () => {
     setError(null);
   };
@@ -136,6 +156,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         register,
         logout,
+        refreshUser,
         sendVerificationCode,
         verifyEmail,
         clearError,

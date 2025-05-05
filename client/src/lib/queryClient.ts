@@ -7,17 +7,21 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+type ApiRequestOptions = {
+  isFormData?: boolean;
+};
+
 export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
-  formData?: FormData | undefined,
+  options?: ApiRequestOptions
 ): Promise<Response> {
-  // If formData is provided, use it instead of JSON data
-  if (formData) {
+  // Handle FormData
+  if (options?.isFormData && data instanceof FormData) {
     const res = await fetch(url, {
       method,
-      body: formData,
+      body: data,
       credentials: "include",
       // Don't set Content-Type header, the browser will set it along with the boundary
     });

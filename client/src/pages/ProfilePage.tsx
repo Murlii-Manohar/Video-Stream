@@ -43,8 +43,8 @@ export default function ProfilePage() {
   
   const updateProfileMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      const response = await apiRequest("PATCH", "/api/users/profile", formData, {
-        isFormData: true
+      const response = await apiRequest("PATCH", "/api/users/profile", formData, { 
+        isFormData: true 
       });
       return response.json();
     },

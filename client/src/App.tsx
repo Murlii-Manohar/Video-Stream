@@ -4,7 +4,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { ThemeProvider } from "@/context/ThemeContext";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/context/AuthContext";
 import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
@@ -23,6 +23,10 @@ import CategoryPage from "@/pages/CategoryPage";
 import Terms from "@/pages/Terms";
 import Privacy from "@/pages/Privacy";
 import ContentPolicy from "@/pages/ContentPolicy";
+import ProfilePage from "@/pages/ProfilePage";
+import MyChannelsPage from "@/pages/MyChannelsPage";
+import DashboardPage from "@/pages/DashboardPage";
+import SettingsPage from "@/pages/SettingsPage";
 import { useAuth } from "@/context/AuthContext";
 
 function ProtectedRoute({ component: Component, adminOnly = false, ...rest }: any) {
@@ -60,6 +64,10 @@ function Router() {
             
             {/* User account routes */}
             <ProtectedRoute path="/my-channel" component={MyChannel} />
+            <ProtectedRoute path="/profile" component={ProfilePage} />
+            <ProtectedRoute path="/my-channels" component={MyChannelsPage} />
+            <ProtectedRoute path="/dashboard" component={DashboardPage} />
+            <ProtectedRoute path="/settings" component={SettingsPage} />
             <ProtectedRoute path="/liked" component={Liked} />
             <ProtectedRoute path="/bookmarks" component={Bookmarks} />
             <ProtectedRoute path="/upload" component={Upload} />
