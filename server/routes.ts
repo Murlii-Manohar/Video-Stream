@@ -1441,6 +1441,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: 'Server error' });
     }
   });
+  
+  // Delete History Route
+  app.delete('/api/users/:id/history', requireAuth, async (req, res) => {
+    try {
+      // Ensure user is deleting their own history
+      const userId = parseInt(req.params.id);
+      if (userId !== req.session.userId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
+      // Check if we have a clearVideoHistoryByUser method
+      if (typeof storage.clearVideoHistoryByUser === 'function') {
+        await storage.clearVideoHistoryByUser(userId);
+      } else {
+        // Fallback: Get all history items and delete them individually
+        const history = await storage.getVideoHistoryByUser(userId);
+        for (const item of history) {
+          await storage.deleteVideoHistory(item.id);
+        }
+      }
+      
+      res.json({ message: 'History cleared successfully' });
+    } catch (error) {
+      console.error('Delete history error:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
 
   // Gamified content discovery - personalized recommendations
   app.get('/api/discover', requireAuth, async (req, res) => {

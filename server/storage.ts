@@ -58,6 +58,8 @@ export interface IStorage {
   getVideoHistory(id: number): Promise<VideoHistory | undefined>;
   getVideoHistoryByUser(userId: number): Promise<VideoHistory[]>;
   createVideoHistory(videoHistory: InsertVideoHistory): Promise<VideoHistory>;
+  deleteVideoHistory?(id: number): Promise<boolean>;
+  clearVideoHistoryByUser?(userId: number): Promise<boolean>;
   
   // Site settings methods
   getSiteSettings(): Promise<SiteSettings | undefined>;
@@ -457,6 +459,21 @@ export class MemStorage implements IStorage {
     };
     this.videoHistory.set(id, videoHistory);
     return videoHistory;
+  }
+  
+  async deleteVideoHistory(id: number): Promise<boolean> {
+    const history = await this.getVideoHistory(id);
+    if (!history) return false;
+    this.videoHistory.delete(id);
+    return true;
+  }
+  
+  async clearVideoHistoryByUser(userId: number): Promise<boolean> {
+    const historyItems = await this.getVideoHistoryByUser(userId);
+    for (const item of historyItems) {
+      this.videoHistory.delete(item.id);
+    }
+    return true;
   }
   
   // Authentication methods

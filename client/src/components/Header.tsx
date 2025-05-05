@@ -20,9 +20,7 @@ import {
   UserIcon,
   LayoutDashboardIcon,
   LogOutIcon,
-  SettingsIcon,
-  ArrowLeftIcon,
-  ArrowRightIcon
+  SettingsIcon
 } from "lucide-react";
 import LoginForm from "./LoginForm";
 import UploadForm from "./UploadForm";
@@ -37,12 +35,6 @@ export function Header({ toggleSidebar }: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
-
-  // Check if the current page is a legal page
-  const isLegalPage = 
-    location === "/terms" || 
-    location === "/privacy" || 
-    location === "/content-policy";
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,30 +72,6 @@ export function Header({ toggleSidebar }: HeaderProps) {
           >
             <MenuIcon className="h-5 w-5" />
           </Button>
-          
-          {/* Navigation buttons - hidden on legal pages */}
-          {!isLegalPage && (
-            <div className="flex items-center mr-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-full hover:bg-muted"
-                onClick={() => window.history.back()}
-                title="Go Back"
-              >
-                <ArrowLeftIcon className="h-5 w-5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-full hover:bg-muted"
-                onClick={() => window.history.forward()}
-                title="Go Forward"
-              >
-                <ArrowRightIcon className="h-5 w-5" />
-              </Button>
-            </div>
-          )}
           
           <Link href="/" className="flex items-center">
             <span className="text-primary font-poppins text-2xl font-bold">Porn<span className="text-secondary">Villa</span></span>
