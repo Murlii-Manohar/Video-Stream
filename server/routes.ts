@@ -91,6 +91,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
       maxAge: 7 * 24 * 60 * 60 * 1000 // 1 week
     }
   }));
+  
+  // Create a route to serve local video files when S3 is unavailable
+  app.get('/media/videos/:filename', (req, res) => {
+    const filename = req.params.filename;
+    // Handle both full paths and just filenames
+    let filePath: string;
+    
+    if (filename.includes('/')) {
+      // It's a full path - extract just the filename
+      const parts = filename.split('/');
+      const actualFilename = parts[parts.length - 1];
+      filePath = path.resolve(`uploaded_files/${actualFilename}`);
+    } else {
+      filePath = path.resolve(`uploaded_files/${filename}`);
+    }
+    
+    // For security, make sure it's in the uploaded_files directory
+    if (!filePath.startsWith(path.resolve('uploaded_files'))) {
+      return res.status(403).send('Forbidden');
+    }
+    
+    // Check if file exists
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).send('File not found');
+    }
+    
+    // Get file stats for range requests
+    const stat = fs.statSync(filePath);
+    const fileSize = stat.size;
+    const range = req.headers.range;
+    
+    // Handle range requests for streaming
+    if (range) {
+      const parts = range.replace(/bytes=/, '').split('-');
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      const chunkSize = end - start + 1;
+      
+      const file = fs.createReadStream(filePath, { start, end });
+      
+      const headers = {
+        'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': chunkSize,
+        'Content-Type': 'video/mp4',
+      };
+      
+      res.writeHead(206, headers);
+      file.pipe(res);
+    } else {
+      // Send the entire file if no range is specified
+      const headers = {
+        'Content-Length': fileSize,
+        'Content-Type': 'video/mp4',
+      };
+      
+      res.writeHead(200, headers);
+      fs.createReadStream(filePath).pipe(res);
+    }
+  });
+  
+  // Create a route to serve local thumbnail files when S3 is unavailable
+  app.get('/media/thumbnails/:filename', (req, res) => {
+    const filename = req.params.filename;
+    // Handle both full paths and just filenames
+    let filePath: string;
+    
+    if (filename.includes('/')) {
+      // It's a full path - extract just the filename
+      const parts = filename.split('/');
+      const actualFilename = parts[parts.length - 1];
+      filePath = path.resolve(`uploaded_files/${actualFilename}`);
+    } else {
+      filePath = path.resolve(`uploaded_files/${filename}`);
+    }
+    
+    // For security, make sure it's in the uploaded_files directory
+    if (!filePath.startsWith(path.resolve('uploaded_files'))) {
+      return res.status(403).send('Forbidden');
+    }
+    
+    // Check if file exists
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).send('File not found');
+    }
+    
+    // Determine the content type based on file extension
+    const ext = path.extname(filePath).toLowerCase();
+    let contentType = 'image/jpeg'; // Default
+    
+    if (ext === '.png') contentType = 'image/png';
+    else if (ext === '.gif') contentType = 'image/gif';
+    else if (ext === '.webp') contentType = 'image/webp';
+    
+    res.setHeader('Content-Type', contentType);
+    fs.createReadStream(filePath).pipe(res);
+  });
 
   // Middleware to handle validation errors
   const handleValidation = (schema: any) => async (req: Request, res: Response, next: any) => {

@@ -110,31 +110,53 @@ export async function getVideoWithSignedUrls(videoId: number): Promise<{
     let videoUrl: string;
     let thumbnailUrl: string | null = null;
     
-    try {
-      // Generate signed URL for video
-      videoUrl = await getSignedFileUrl(video.filePath);
-      
-      // Generate signed URL for thumbnail if exists
-      if (video.thumbnailPath) {
-        thumbnailUrl = await getSignedFileUrl(video.thumbnailPath, true);
+    // Check if we're dealing with a local file path
+    const isLocalVideoPath = video.filePath.startsWith('/') || 
+                            video.filePath.includes('./') || 
+                            video.filePath.includes('../');
+    
+    const isLocalThumbnailPath = video.thumbnailPath && 
+                               (video.thumbnailPath.startsWith('/') || 
+                                video.thumbnailPath.includes('./') || 
+                                video.thumbnailPath.includes('../'));
+    
+    if (isLocalVideoPath) {
+      // For local file paths, use our media endpoint
+      const filename = path.basename(video.filePath);
+      videoUrl = `/media/videos/${filename}`;
+      log(`Using local media route for video: ${videoUrl}`, 'videoService');
+    } else {
+      try {
+        // Try to get signed URL from S3
+        videoUrl = await getSignedFileUrl(video.filePath);
+      } catch (s3Error: any) {
+        // Handle S3 errors by converting to local media route
+        log(`S3 error (${s3Error.Code}), using media route: ${s3Error}`, 'videoService');
+        const filename = path.basename(video.filePath);
+        videoUrl = `/media/videos/${filename}`;
       }
-    } catch (s3Error: any) {
-      // Handle S3 access issues
-      if (s3Error.Code === 'AccessDenied' || (s3Error.$metadata && s3Error.$metadata.httpStatusCode === 403)) {
-        log(`S3 access denied, using direct file paths: ${s3Error}`, 'videoService');
-        
-        // Use the file paths directly (this only works if they're local paths)
-        videoUrl = video.filePath;
-        thumbnailUrl = video.thumbnailPath;
-      } else if (s3Error.Code === 'NoSuchKey' || s3Error.message?.includes('NoSuchKey')) {
-        log(`S3 key not found, using direct file paths: ${s3Error}`, 'videoService');
-        
-        // Use the file paths directly (this only works if they're local paths)
-        videoUrl = video.filePath;
-        thumbnailUrl = video.thumbnailPath;
+    }
+    
+    // Handle thumbnail URL
+    if (video.thumbnailPath) {
+      if (isLocalThumbnailPath) {
+        // For local thumbnail paths, use our media endpoint
+        const filename = path.basename(video.thumbnailPath);
+        thumbnailUrl = `/media/thumbnails/${filename}`;
+        log(`Using local media route for thumbnail: ${thumbnailUrl}`, 'videoService');
       } else {
-        // For other errors, re-throw
-        throw s3Error;
+        try {
+          // Try to get signed URL from S3
+          thumbnailUrl = await getSignedFileUrl(video.thumbnailPath, true);
+        } catch (s3Error: any) {
+          // Handle S3 errors by converting to local media route
+          log(`S3 error (${s3Error.Code}), using media route for thumbnail: ${s3Error}`, 'videoService');
+          
+          if (video.thumbnailPath) {
+            const filename = path.basename(video.thumbnailPath);
+            thumbnailUrl = `/media/thumbnails/${filename}`;
+          }
+        }
       }
     }
     
