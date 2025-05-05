@@ -1135,6 +1135,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: 'Server error' });
     }
   });
+  
+  // Edit video (users can only edit their own videos)
+  app.patch('/api/videos/:id', requireAuth, async (req, res) => {
+    try {
+      const videoId = parseInt(req.params.id);
+      const userId = req.session.userId;
+      
+      // Fetch the video to check ownership
+      const video = await storage.getVideo(videoId);
+      
+      if (!video) {
+        return res.status(404).json({ message: 'Video not found' });
+      }
+      
+      // Check if the user owns the video or is an admin
+      if (video.userId !== userId) {
+        const user = await storage.getUser(userId);
+        if (!user?.isAdmin) {
+          return res.status(403).json({ message: 'You do not have permission to edit this video' });
+        }
+      }
+      
+      // These are the fields users are allowed to update
+      const allowedUpdates = ['title', 'description', 'categories', 'tags', 'isPublished'];
+      const updateData: Partial<Video> = {};
+      
+      // Filter out any fields that aren't allowed to be updated
+      for (const field of allowedUpdates) {
+        if (field in req.body) {
+          updateData[field] = req.body[field];
+        }
+      }
+      
+      // Update the video in the database
+      const updatedVideo = await storage.updateVideo(videoId, updateData);
+      
+      if (!updatedVideo) {
+        return res.status(500).json({ message: 'Failed to update video' });
+      }
+      
+      res.json({
+        ...updatedVideo,
+        message: 'Video updated successfully'
+      });
+    } catch (error) {
+      console.error('Update video error:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
+  
+  // Delete video (users can only delete their own videos)
+  app.delete('/api/videos/:id', requireAuth, async (req, res) => {
+    try {
+      const videoId = parseInt(req.params.id);
+      const userId = req.session.userId;
+      
+      // Fetch the video first
+      const video = await storage.getVideo(videoId);
+      
+      if (!video) {
+        return res.status(404).json({ message: 'Video not found' });
+      }
+      
+      // Check if the user owns the video or is an admin
+      if (video.userId !== userId) {
+        const user = await storage.getUser(userId);
+        if (!user?.isAdmin) {
+          return res.status(403).json({ message: 'You do not have permission to delete this video' });
+        }
+      }
+      
+      try {
+        // Use our video service to delete from S3 and database
+        const deleted = await deleteVideo(videoId);
+        
+        if (!deleted) {
+          return res.status(500).json({ message: 'Failed to delete video' });
+        }
+        
+        res.json({ message: 'Video deleted successfully' });
+      } catch (s3Error) {
+        console.error('S3 error during delete:', s3Error);
+        
+        // Fallback to storage method if S3 fails
+        const deleted = await storage.deleteVideo(videoId);
+        
+        if (!deleted) {
+          return res.status(500).json({ message: 'Failed to delete video' });
+        }
+        
+        res.json({ message: 'Video deleted successfully (fallback)' });
+      }
+    } catch (error) {
+      console.error('Delete video error:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
 
   // Get History Route
   app.get('/api/users/:id/history', requireAuth, async (req, res) => {
