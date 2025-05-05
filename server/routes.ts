@@ -250,6 +250,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Serve uploaded files
   app.use('/uploads', express.static(storage_dir));
   
+  // Serve videos and thumbnails with proper headers
+  app.use('/media/videos', (req, res, next) => {
+    // Add video-specific CORS headers
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Range');
+    res.header('Access-Control-Expose-Headers', 'Content-Range, Accept-Ranges, Content-Length');
+    next();
+  }, express.static(storage_dir));
+  
+  app.use('/media/thumbnails', (req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    next();
+  }, express.static(storage_dir));
+  
   // Special route to serve full path videos
   app.get('/api/media/direct', (req, res) => {
     // Add CORS headers for video files
