@@ -155,9 +155,13 @@ export function Header({ toggleSidebar }: HeaderProps) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={() => setLocation(`/channel/${user.id}`)}>
+                  <DropdownMenuItem onClick={() => setLocation(`/profile`)}>
                     <UserIcon className="mr-2 h-4 w-4" />
-                    Your Channel
+                    My Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setLocation('/my-channels')}>
+                    <UserIcon className="mr-2 h-4 w-4" />
+                    My Channels
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setLocation('/dashboard')}>
                     <LayoutDashboardIcon className="mr-2 h-4 w-4" />

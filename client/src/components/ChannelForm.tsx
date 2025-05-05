@@ -1,252 +1,209 @@
-import React from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import { apiRequest } from "@/lib/queryClient";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { UploadCloud, X } from "lucide-react";
+import { Loader2, CameraIcon } from "lucide-react";
 
 interface ChannelFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  existingChannel?: {
-    id: number;
-    name: string;
-    description?: string;
-    bannerImage?: string;
-  };
+  existingChannel?: any;
 }
-
-const channelFormSchema = z.object({
-  name: z.string()
-    .min(3, "Channel name must be at least 3 characters")
-    .max(50, "Channel name cannot exceed 50 characters"),
-  description: z.string()
-    .max(1000, "Description cannot exceed 1000 characters")
-    .optional(),
-  bannerImage: z.string().optional(),
-});
-
-type ChannelFormValues = z.infer<typeof channelFormSchema>;
 
 export default function ChannelForm({ open, onOpenChange, existingChannel }: ChannelFormProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const isEditMode = !!existingChannel;
-
-  const form = useForm<ChannelFormValues>({
-    resolver: zodResolver(channelFormSchema),
-    defaultValues: {
-      name: existingChannel?.name || "",
-      description: existingChannel?.description || "",
-      bannerImage: existingChannel?.bannerImage || "",
-    },
-  });
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files[0]) {
-      setSelectedFile(event.target.files[0]);
+  
+  // Form state
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [bannerImage, setBannerImage] = useState<File | null>(null);
+  const [bannerPreview, setBannerPreview] = useState("");
+  
+  useEffect(() => {
+    if (existingChannel) {
+      setName(existingChannel.name || "");
+      setDescription(existingChannel.description || "");
+      
+      if (existingChannel.bannerImage) {
+        setBannerPreview(existingChannel.bannerImage);
+      }
+    } else {
+      // Reset form for new channel
+      setName("");
+      setDescription("");
+      setBannerImage(null);
+      setBannerPreview("");
     }
-  };
-
+  }, [existingChannel, open]);
+  
   const createChannelMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      const response = await fetch("/api/channels", {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to create channel");
-      }
-      
+      const response = await apiRequest(
+        existingChannel ? "PATCH" : "POST",
+        existingChannel ? `/api/channels/${existingChannel.id}` : "/api/channels",
+        formData,
+        { isFormData: true }
+      );
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/channels/user"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/channels/user'] });
       onOpenChange(false);
       toast({
-        title: "Success",
-        description: isEditMode 
-          ? "Channel updated successfully" 
-          : "Channel created successfully",
+        title: existingChannel ? "Channel updated" : "Channel created",
+        description: existingChannel 
+          ? "Your channel has been updated successfully" 
+          : "Your channel has been created successfully",
       });
-      form.reset();
-      setSelectedFile(null);
     },
-    onError: (error: Error) => {
+    onError: (error) => {
       toast({
-        title: "Error",
-        description: error.message,
+        title: existingChannel ? "Update failed" : "Creation failed",
+        description: error instanceof Error ? error.message : "Failed to save channel",
         variant: "destructive",
       });
     },
   });
-
-  const onSubmit = async (values: ChannelFormValues) => {
-    if (!user) {
+  
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!name.trim()) {
       toast({
-        title: "Error",
-        description: "You must be logged in to create a channel",
+        title: "Validation error",
+        description: "Channel name is required",
         variant: "destructive",
       });
       return;
     }
-
+    
     const formData = new FormData();
-    formData.append("name", values.name);
+    formData.append("name", name);
+    formData.append("description", description);
     
-    if (values.description) {
-      formData.append("description", values.description);
+    if (bannerImage) {
+      formData.append("bannerImage", bannerImage);
     }
     
-    if (selectedFile) {
-      formData.append("bannerImage", selectedFile);
-    } else if (values.bannerImage) {
-      formData.append("bannerImageUrl", values.bannerImage);
-    }
-
-    if (existingChannel) {
-      formData.append("channelId", existingChannel.id.toString());
-      formData.append("_method", "PATCH"); // For method spoofing
-    }
-
     createChannelMutation.mutate(formData);
   };
-
-  const handleClearFile = () => {
-    setSelectedFile(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+  
+  const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setBannerImage(file);
+      
+      // Create a preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setBannerPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
-
+  
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            {isEditMode ? "Edit Channel" : "Create New Channel"}
-          </DialogTitle>
+          <DialogTitle>{existingChannel ? "Edit Channel" : "Create New Channel"}</DialogTitle>
+          <DialogDescription>
+            {existingChannel 
+              ? "Update your channel details to better represent your content" 
+              : "Create a channel to start uploading and sharing your videos"}
+          </DialogDescription>
         </DialogHeader>
         
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Channel Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter channel name" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Tell viewers about your channel"
-                      className="resize-none min-h-[100px]"
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <div>
-              <FormLabel>Banner Image</FormLabel>
-              <div className="mt-2">
-                <div className="flex items-center justify-center w-full">
-                  <label
-                    htmlFor="dropzone-file"
-                    className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:hover:bg-gray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500"
-                  >
-                    {selectedFile ? (
-                      <div className="relative w-full h-full p-2">
-                        <div className="absolute top-2 right-2 z-10">
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="destructive"
-                            onClick={handleClearFile}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <div className="w-full h-full flex items-center justify-center">
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            {selectedFile.name}
-                          </p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center justify-center">
-                        <UploadCloud className="w-8 h-8 mb-2 text-gray-500 dark:text-gray-400" />
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          Click to upload banner image
-                        </p>
-                      </div>
-                    )}
-                    <input
-                      id="dropzone-file"
-                      type="file"
-                      className="hidden"
-                      accept="image/*"
-                      ref={fileInputRef}
-                      onChange={handleFileChange}
-                    />
-                  </label>
-                </div>
-              </div>
+        <form onSubmit={handleSubmit}>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="channel-name">Channel Name *</Label>
+              <Input
+                id="channel-name"
+                placeholder="Enter channel name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
             </div>
             
-            <DialogFooter>
-              <Button 
-                type="submit" 
-                disabled={createChannelMutation.isPending}
+            <div className="space-y-2">
+              <Label htmlFor="channel-description">Description</Label>
+              <Textarea
+                id="channel-description"
+                placeholder="Describe your channel content"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Banner Image</Label>
+              <div 
+                className="border-2 border-dashed rounded-md p-4 hover:bg-muted/50 transition-colors cursor-pointer relative"
+                onClick={() => document.getElementById('banner-upload')?.click()}
               >
-                {createChannelMutation.isPending ? "Saving..." : isEditMode ? "Update Channel" : "Create Channel"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+                {bannerPreview ? (
+                  <div className="relative">
+                    <img 
+                      src={bannerPreview} 
+                      alt="Banner preview" 
+                      className="w-full h-32 object-cover rounded-md"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity">
+                      <CameraIcon className="h-8 w-8 text-white" />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-4">
+                    <CameraIcon className="h-8 w-8 text-muted-foreground mb-2" />
+                    <p className="text-sm text-muted-foreground">Click to upload a banner image</p>
+                    <p className="text-xs text-muted-foreground">Recommended size: 1200 x 300 pixels</p>
+                  </div>
+                )}
+                <input
+                  type="file"
+                  id="banner-upload"
+                  className="hidden"
+                  accept="image/*"
+                  onChange={handleBannerChange}
+                />
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter className="mt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={createChannelMutation.isPending}
+            >
+              {createChannelMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {existingChannel ? "Updating..." : "Creating..."}
+                </>
+              ) : (
+                existingChannel ? "Update Channel" : "Create Channel"
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
