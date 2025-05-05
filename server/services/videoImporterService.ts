@@ -2,6 +2,7 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { tagContent } from './contentTaggingService';
 import { log } from '../vite';
+import { AnyNode } from 'cheerio';
 
 // Video source types for import
 enum VideoSourceType {
