@@ -1998,13 +1998,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/admin/ads/videos/:id', requireAdmin, async (req, res) => {
     try {
       const videoId = parseInt(req.params.id);
-      const { hasAds, adUrl, adStartTime } = req.body;
+      const { hasAds, adUrl, adStartTime, adSkippable } = req.body;
       
       const video = await storage.toggleVideoAds(
         videoId, 
         hasAds, 
         adUrl, 
-        adStartTime ? parseInt(adStartTime) : undefined
+        adStartTime ? parseInt(adStartTime) : undefined,
+        adSkippable
       );
       
       if (!video) {
@@ -2016,6 +2017,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         hasAds: video.hasAds,
         adUrl: video.adUrl,
         adStartTime: video.adStartTime,
+        adSkippable: video.adSkippable,
         message: hasAds ? 'Ads enabled for this video' : 'Ads disabled for this video'
       });
     } catch (error) {

@@ -27,6 +27,7 @@ export function AdminAdManagement() {
   const [videoAdUrl, setVideoAdUrl] = useState("");
   const [videoAdStartTime, setVideoAdStartTime] = useState("");
   const [videoHasAds, setVideoHasAds] = useState(false);
+  const [videoAdSkippable, setVideoAdSkippable] = useState(false);
 
   // Fetch site ad settings
   const { data: siteAdSettings, isLoading: isLoadingSiteAds } = useQuery({
@@ -85,8 +86,8 @@ export function AdminAdManagement() {
 
   // Toggle video ads mutation
   const toggleVideoAdsMutation = useMutation({
-    mutationFn: async ({ videoId, hasAds, adUrl, adStartTime }: { videoId: number; hasAds: boolean; adUrl?: string; adStartTime?: string }) => {
-      const res = await apiRequest('POST', `/api/admin/ads/videos/${videoId}`, { hasAds, adUrl, adStartTime });
+    mutationFn: async ({ videoId, hasAds, adUrl, adStartTime, adSkippable }: { videoId: number; hasAds: boolean; adUrl?: string; adStartTime?: string; adSkippable?: boolean }) => {
+      const res = await apiRequest('POST', `/api/admin/ads/videos/${videoId}`, { hasAds, adUrl, adStartTime, adSkippable });
       if (!res.ok) throw new Error('Failed to update video ad settings');
       return res.json();
     },
@@ -100,6 +101,7 @@ export function AdminAdManagement() {
       setVideoAdUrl("");
       setVideoAdStartTime("");
       setVideoHasAds(false);
+      setVideoAdSkippable(false);
     },
     onError: (error: Error) => {
       toast({
@@ -173,6 +175,7 @@ export function AdminAdManagement() {
     setVideoHasAds(video.hasAds || false);
     setVideoAdUrl(video.adUrl || "");
     setVideoAdStartTime(video.adStartTime ? String(video.adStartTime) : "");
+    setVideoAdSkippable(video.adSkippable || false);
   };
 
   // Save video ad settings
@@ -183,7 +186,8 @@ export function AdminAdManagement() {
       videoId: selectedVideo,
       hasAds: videoHasAds,
       adUrl: videoHasAds ? videoAdUrl : undefined,
-      adStartTime: videoHasAds && videoAdStartTime ? videoAdStartTime : undefined
+      adStartTime: videoHasAds && videoAdStartTime ? videoAdStartTime : undefined,
+      adSkippable: videoHasAds ? videoAdSkippable : undefined
     });
   };
 
@@ -363,6 +367,14 @@ export function AdminAdManagement() {
                                 value={videoAdStartTime}
                                 onChange={(e) => setVideoAdStartTime(e.target.value)}
                               />
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Switch
+                                id="ad-skippable-toggle"
+                                checked={videoAdSkippable}
+                                onCheckedChange={setVideoAdSkippable}
+                              />
+                              <Label htmlFor="ad-skippable-toggle">Allow ad to be skipped after 5 seconds</Label>
                             </div>
                           </div>
                           
