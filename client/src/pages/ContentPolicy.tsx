@@ -62,7 +62,7 @@ export default function ContentPolicy() {
         <p>Content creators are responsible for obtaining appropriate model releases from all individuals appearing in their content. These releases should grant permission for the content to be distributed on platforms like PornVilla.</p>
         
         <h2>7. Reporting Violations</h2>
-        <p>If you believe content on XPlayHD violates this policy, please report it immediately. We take all reports seriously and will investigate promptly.</p>
+        <p>If you believe content on PornVilla violates this policy, please report it immediately. We take all reports seriously and will investigate promptly.</p>
         
         <h2>8. Compliance with Laws</h2>
         <p>All content must comply with applicable local, state, national, and international laws. Content creators are responsible for understanding and adhering to the laws that apply to them.</p>
@@ -71,7 +71,7 @@ export default function ContentPolicy() {
         <p>We may update this Content Policy from time to time. We will notify users of any significant changes.</p>
         
         <h2>10. Contact Information</h2>
-        <p>For questions about this Content Policy, please contact us at content-policy@xplayhd.com.</p>
+        <p>For questions about this Content Policy, please contact us at content-policy@pornvilla.com.</p>
         
         <p className="text-muted-foreground mt-8">Last updated: May 1, 2025</p>
       </div>
