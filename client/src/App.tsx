@@ -25,6 +25,7 @@ import CategoryPage from "@/pages/CategoryPage";
 import Terms from "@/pages/Terms";
 import Privacy from "@/pages/Privacy";
 import ContentPolicy from "@/pages/ContentPolicy";
+import Contact from "@/pages/Contact";
 import ProfilePage from "@/pages/ProfilePage";
 import MyChannelsPage from "@/pages/MyChannelsPage";
 import DashboardPage from "@/pages/DashboardPage";
@@ -97,6 +98,7 @@ function Router() {
               <Route path="/terms" component={Terms} />
               <Route path="/privacy" component={Privacy} />
               <Route path="/content-policy" component={ContentPolicy} />
+              <Route path="/contact" component={Contact} />
               
               {/* Fallback to 404 */}
               <Route component={NotFound} />

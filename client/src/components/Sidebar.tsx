@@ -212,6 +212,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
               <div className="hover:underline cursor-pointer" onClick={() => navigate("/terms")}>Terms</div>
               <div className="hover:underline cursor-pointer" onClick={() => navigate("/privacy")}>Privacy</div>
               <div className="hover:underline cursor-pointer" onClick={() => navigate("/content-policy")}>Content Policy</div>
+              <div className="hover:underline cursor-pointer" onClick={() => navigate("/contact")}>Contact Us</div>
             </div>
           </div>
         </div>
