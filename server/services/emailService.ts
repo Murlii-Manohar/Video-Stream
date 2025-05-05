@@ -37,7 +37,7 @@ export const emailService = {
       // Send email
       const info = await transporter.sendMail({
         from: `"PornVilla Contact" <${process.env.EMAIL_USER}>`,
-        to: 'jsins8061@gmail.com',
+        to: process.env.EMAIL_USER || '',
         subject: `[PornVilla Contact] ${data.subject}`,
         html: htmlContent,
         // Add reply-to so you can directly reply to the sender
