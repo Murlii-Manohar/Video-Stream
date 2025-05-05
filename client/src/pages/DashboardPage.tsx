@@ -1,404 +1,574 @@
-import { useEffect } from "react";
-import { useLocation } from "wouter";
-import { useAuth } from "@/context/AuthContext";
+import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { useLocation, useLocation as useWouterLocation } from "wouter";
+import { formatCount, formatDate, formatDuration, truncateString } from "@/lib/utils";
 import { 
-  Activity, 
-  Eye, 
-  ThumbsUp, 
-  Users, 
-  Video, 
-  BarChart, 
-  Clock, 
-  TrendingUp,
-  Loader2,
-  PlusIcon 
-} from "lucide-react";
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardHeader, 
+  CardTitle 
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { 
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  Title,
+  CirclePlay,
+  Eye,
+  ThumbsUp,
+  MessageSquare,
+  TrendingUp,
+  BarChart3,
+  Loader2,
+  ArrowUpRight,
+  Users,
+  Video,
+  LayoutDashboard,
+  ArrowRight,
+  ArrowUpFromLine
+} from "lucide-react";
+import { Channel, Video as VideoType } from "@shared/schema";
+import {
+  Line,
+  LineChart,
+  CartesianGrid,
+  XAxis,
+  YAxis,
   Tooltip,
-  Legend,
-} from 'chart.js';
-import { Line, Bar } from 'react-chartjs-2';
-
-// Register ChartJS components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  Title,
-  Tooltip,
+  ResponsiveContainer,
+  BarChart as RechartsBarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
   Legend
-);
+} from "recharts";
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const [, navigate] = useLocation();
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  const [location] = useWouterLocation();
+  const [selectedChannelId, setSelectedChannelId] = useState<number | null>(null);
   
-  const { data: stats, isLoading: statsLoading } = useQuery({
-    queryKey: ['/api/dashboard/stats'],
-    enabled: !!user,
-  });
-  
-  const { data: channels, isLoading: channelsLoading } = useQuery({
-    queryKey: ['/api/channels/user'],
-    enabled: !!user,
-  });
-  
-  const { data: videos, isLoading: videosLoading } = useQuery({
-    queryKey: ['/api/videos', user?.id],
-    enabled: !!user,
-  });
-  
-  const formatNumber = (num: number) => {
-    if (num >= 1000000) {
-      return (num / 1000000).toFixed(1) + 'M';
+  // Parse the current URL to extract the channelId if present
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const channelId = urlParams.get("channelId");
+    if (channelId) {
+      setSelectedChannelId(Number(channelId));
     }
-    if (num >= 1000) {
-      return (num / 1000).toFixed(1) + 'K';
+  }, [location]);
+
+  // Get the user's channels
+  const { 
+    data: channels, 
+    isLoading: isLoadingChannels
+  } = useQuery<Channel[]>({
+    queryKey: ["/api/channels/user"],
+    enabled: !!user,
+  });
+
+  // Get analytics for the selected channel
+  const {
+    data: analytics,
+    isLoading: isLoadingAnalytics,
+  } = useQuery<any>({
+    queryKey: [`/api/analytics/channel/${selectedChannelId}`],
+    enabled: !!selectedChannelId,
+  });
+
+  // Get the videos for the selected channel
+  const {
+    data: videos,
+    isLoading: isLoadingVideos,
+  } = useQuery<VideoType[]>({
+    queryKey: [`/api/channels/${selectedChannelId}/videos`],
+    enabled: !!selectedChannelId,
+  });
+
+  // Get the selected channel details
+  const {
+    data: selectedChannel,
+    isLoading: isLoadingChannel,
+  } = useQuery<Channel>({
+    queryKey: [`/api/channels/${selectedChannelId}`],
+    enabled: !!selectedChannelId,
+  });
+
+  // Set the first channel as the selected one if none is selected already
+  useEffect(() => {
+    if (!selectedChannelId && channels && channels.length > 0) {
+      setSelectedChannelId(channels[0].id);
     }
-    return num.toString();
-  };
-  
+  }, [channels, selectedChannelId]);
+
   // Mock data for charts
-  const viewsData = {
-    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'],
-    datasets: [
-      {
-        label: 'Views',
-        data: [3000, 5000, 4000, 7000, 6000, 8000, 10000],
-        borderColor: 'rgb(53, 162, 235)',
-        backgroundColor: 'rgba(53, 162, 235, 0.5)',
-      },
-    ],
-  };
-  
-  const engagementData = {
-    labels: ['Likes', 'Comments', 'Shares', 'Saves'],
-    datasets: [
-      {
-        label: 'Engagement',
-        data: [stats?.totalLikes || 0, stats?.totalComments || 0, 25, 42],
-        backgroundColor: [
-          'rgba(255, 99, 132, 0.6)',
-          'rgba(54, 162, 235, 0.6)',
-          'rgba(255, 206, 86, 0.6)',
-          'rgba(75, 192, 192, 0.6)',
-        ],
-        borderColor: [
-          'rgba(255, 99, 132, 1)',
-          'rgba(54, 162, 235, 1)',
-          'rgba(255, 206, 86, 1)',
-          'rgba(75, 192, 192, 1)',
-        ],
-        borderWidth: 1,
-      },
-    ],
-  };
-  
+  const viewsData = [
+    { name: 'Jan', views: 4000 },
+    { name: 'Feb', views: 3000 },
+    { name: 'Mar', views: 2000 },
+    { name: 'Apr', views: 2780 },
+    { name: 'May', views: 1890 },
+    { name: 'Jun', views: 2390 },
+    { name: 'Jul', views: 3490 },
+  ];
+
+  const categoryData = [
+    { name: 'Amateur', value: 400 },
+    { name: 'Threesome', value: 300 },
+    { name: 'MILF', value: 300 },
+    { name: 'Blonde', value: 200 },
+    { name: 'Asian', value: 150 },
+  ];
+
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+
+  const engagement = analytics?.totalLikes + analytics?.totalComments || 0;
+
   if (!user) {
-    navigate("/auth");
+    setLocation("/auth");
     return null;
   }
-  
-  const isLoading = statsLoading || channelsLoading || videosLoading;
-  const hasChannels = channels && channels.length > 0;
-  
+
   return (
-    <div className="container py-8 max-w-6xl">
-      <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
-      <p className="text-muted-foreground mb-6">Track your content performance and channel growth</p>
-      
-      {isLoading ? (
-        <div className="flex justify-center items-center py-12">
+    <div className="container py-8 max-w-7xl">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+        <div>
+          <h1 className="text-3xl font-bold">Creator Dashboard</h1>
+          <p className="text-muted-foreground">Manage and track your content performance</p>
+        </div>
+        {channels && channels.length > 0 && (
+          <div className="flex flex-col sm:flex-row gap-2">
+            <select 
+              className="px-4 py-2 rounded-md border bg-background"
+              value={selectedChannelId || ""}
+              onChange={(e) => setSelectedChannelId(Number(e.target.value))}
+              disabled={isLoadingChannels}
+            >
+              {channels.map((channel) => (
+                <option key={channel.id} value={channel.id}>{channel.name}</option>
+              ))}
+            </select>
+            <Button 
+              variant="outline"
+              onClick={() => setLocation(`/my-channel/${selectedChannelId}`)}
+              disabled={!selectedChannelId}
+            >
+              Manage Channel
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {isLoadingChannels || isLoadingChannel || isLoadingAnalytics ? (
+        <div className="flex justify-center items-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
-      ) : !hasChannels ? (
-        <Card className="bg-muted/50">
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-semibold mb-2">Create Your First Channel</h2>
-                <p className="text-muted-foreground">You need to create a channel to access dashboard features and upload videos.</p>
-              </div>
-              <Button onClick={() => navigate("/my-channels")}>
-                <PlusIcon className="h-4 w-4 mr-2" />
-                Create Channel
-              </Button>
+      ) : channels && channels.length === 0 ? (
+        <Card className="bg-muted/30 border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-12 px-6 text-center">
+            <div className="bg-primary/10 p-4 rounded-full mb-4">
+              <LayoutDashboard className="h-12 w-12 text-primary" />
             </div>
+            <h2 className="text-xl font-semibold mb-2">No Channels Yet</h2>
+            <p className="text-muted-foreground mb-6 max-w-md">
+              You haven't created any channels yet. Create a channel to start tracking your content performance.
+            </p>
+            <Button onClick={() => setLocation("/my-channels")}>
+              Go to My Channels
+            </Button>
           </CardContent>
         </Card>
       ) : (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Total Views</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center">
-                  <Eye className="mr-2 h-4 w-4 text-muted-foreground" />
-                  <div className="text-2xl font-bold">{formatNumber(stats?.totalViews || 0)}</div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Total Likes</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center">
-                  <ThumbsUp className="mr-2 h-4 w-4 text-muted-foreground" />
-                  <div className="text-2xl font-bold">{formatNumber(stats?.totalLikes || 0)}</div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Total Videos</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center">
-                  <Video className="mr-2 h-4 w-4 text-muted-foreground" />
-                  <div className="text-2xl font-bold">{formatNumber(stats?.totalVideos || 0)}</div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Subscribers</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center">
-                  <Users className="mr-2 h-4 w-4 text-muted-foreground" />
-                  <div className="text-2xl font-bold">{formatNumber(stats?.totalSubscribers || 0)}</div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-          
-          <Tabs defaultValue="overview" className="mb-8">
-            <TabsList>
-              <TabsTrigger value="overview">
-                <BarChart className="h-4 w-4 mr-2" />
-                Overview
-              </TabsTrigger>
-              <TabsTrigger value="views">
-                <Eye className="h-4 w-4 mr-2" />
-                Views
-              </TabsTrigger>
-              <TabsTrigger value="engagement">
-                <Activity className="h-4 w-4 mr-2" />
-                Engagement
-              </TabsTrigger>
-              <TabsTrigger value="channels">
-                <Users className="h-4 w-4 mr-2" />
-                Channels
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="overview" className="mt-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Views Over Time</CardTitle>
-                    <CardDescription>Monthly view count for all your videos</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-80">
-                      <Line 
-                        data={viewsData} 
-                        options={{
-                          responsive: true,
-                          maintainAspectRatio: false,
-                        }}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Engagement Metrics</CardTitle>
-                    <CardDescription>Breakdown of user interactions</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-80">
-                      <Bar 
-                        data={engagementData}
-                        options={{
-                          responsive: true,
-                          maintainAspectRatio: false,
-                        }}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="views" className="mt-6">
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList className="grid w-full md:w-auto grid-cols-3 md:grid-cols-5">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="content">Content</TabsTrigger>
+            <TabsTrigger value="audience">Audience</TabsTrigger>
+            <TabsTrigger value="revenue" className="hidden md:block">Revenue</TabsTrigger>
+            <TabsTrigger value="settings" className="hidden md:block">Settings</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-6">
+            {/* Channel Overview */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card>
-                <CardHeader>
-                  <CardTitle>Views Analytics</CardTitle>
-                  <CardDescription>View performance across your channels</CardDescription>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-xl">{selectedChannel?.name || "Channel"}</CardTitle>
+                  <CardDescription>
+                    {selectedChannel?.description || "No description provided"}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-96">
-                    <Line 
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex flex-col">
+                      <span className="text-muted-foreground text-sm">Created</span>
+                      <span>{formatDate(selectedChannel?.createdAt)}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-muted-foreground text-sm">Total Videos</span>
+                      <span>{formatCount(videos?.length || 0)}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-xl">Performance</CardTitle>
+                  <CardDescription>
+                    Channel views, likes, and engagement
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex flex-col">
+                      <span className="text-muted-foreground text-sm">Total Views</span>
+                      <span className="text-2xl font-bold">{formatCount(analytics?.totalViews || 0)}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-muted-foreground text-sm">Total Likes</span>
+                      <span className="text-2xl font-bold">{formatCount(analytics?.totalLikes || 0)}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-muted-foreground text-sm">Total Videos</span>
+                      <span className="text-2xl font-bold">{formatCount(analytics?.totalVideos || 0)}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-muted-foreground text-sm">Subscribers</span>
+                      <span className="text-2xl font-bold">{formatCount(analytics?.totalSubscribers || 0)}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Key Metrics */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+              <Card className="bg-background/60">
+                <CardContent className="p-6">
+                  <div className="flex items-center space-x-2">
+                    <div className="bg-primary/10 p-2 rounded-full">
+                      <Eye className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Views</p>
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <p className="text-2xl font-bold">{formatCount(analytics?.totalViews || 0)}</p>
+                    <div className="flex items-center space-x-1 mt-1">
+                      <ArrowUpRight className="h-4 w-4 text-green-500" />
+                      <p className="text-xs text-green-500">+5.2%</p>
+                      <p className="text-xs text-muted-foreground ml-1">from last month</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-background/60">
+                <CardContent className="p-6">
+                  <div className="flex items-center space-x-2">
+                    <div className="bg-primary/10 p-2 rounded-full">
+                      <ThumbsUp className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Likes</p>
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <p className="text-2xl font-bold">{formatCount(analytics?.totalLikes || 0)}</p>
+                    <div className="flex items-center space-x-1 mt-1">
+                      <ArrowUpRight className="h-4 w-4 text-green-500" />
+                      <p className="text-xs text-green-500">+12.3%</p>
+                      <p className="text-xs text-muted-foreground ml-1">from last month</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-background/60">
+                <CardContent className="p-6">
+                  <div className="flex items-center space-x-2">
+                    <div className="bg-primary/10 p-2 rounded-full">
+                      <Users className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Subscribers</p>
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <p className="text-2xl font-bold">{formatCount(analytics?.totalSubscribers || 0)}</p>
+                    <div className="flex items-center space-x-1 mt-1">
+                      <ArrowUpRight className="h-4 w-4 text-green-500" />
+                      <p className="text-xs text-green-500">+3.7%</p>
+                      <p className="text-xs text-muted-foreground ml-1">from last month</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-background/60">
+                <CardContent className="p-6">
+                  <div className="flex items-center space-x-2">
+                    <div className="bg-primary/10 p-2 rounded-full">
+                      <BarChart3 className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Engagement</p>
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <p className="text-2xl font-bold">{formatCount(engagement)}</p>
+                    <div className="flex items-center space-x-1 mt-1">
+                      <ArrowUpRight className="h-4 w-4 text-green-500" />
+                      <p className="text-xs text-green-500">+8.1%</p>
+                      <p className="text-xs text-muted-foreground ml-1">from last month</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Charts */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Views Over Time</CardTitle>
+                  <CardDescription>Daily video views trend for the last 7 days</CardDescription>
+                </CardHeader>
+                <CardContent className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart
                       data={viewsData}
-                      options={{
-                        responsive: true,
-                        maintainAspectRatio: false,
-                      }}
-                    />
-                  </div>
+                      margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} />
+                      <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                      <YAxis tick={{ fontSize: 12 }} width={40} />
+                      <Tooltip
+                        contentStyle={{ 
+                          backgroundColor: 'var(--background)', 
+                          borderColor: 'var(--border)',
+                          borderRadius: '0.5rem',
+                          fontSize: '0.875rem'
+                        }}
+                        labelStyle={{ fontWeight: 'bold' }}
+                        formatter={(value) => [`${value} views`, 'Views']}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="views" 
+                        stroke="var(--primary)" 
+                        strokeWidth={2}
+                        activeDot={{ r: 6 }} 
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </CardContent>
               </Card>
-            </TabsContent>
-            
-            <TabsContent value="engagement" className="mt-6">
+
               <Card>
                 <CardHeader>
-                  <CardTitle>User Engagement</CardTitle>
-                  <CardDescription>How users interact with your content</CardDescription>
+                  <CardTitle>Popular Categories</CardTitle>
+                  <CardDescription>Most viewed video categories</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="h-96">
-                    <Bar 
-                      data={engagementData}
-                      options={{
-                        responsive: true,
-                        maintainAspectRatio: false,
-                      }}
-                    />
-                  </div>
+                <CardContent className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={categoryData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      >
+                        {categoryData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{ 
+                          backgroundColor: 'var(--background)', 
+                          borderColor: 'var(--border)',
+                          borderRadius: '0.5rem',
+                          fontSize: '0.875rem'
+                        }}
+                        formatter={(value) => [`${value} views`, 'Views']}
+                      />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
                 </CardContent>
               </Card>
-            </TabsContent>
-            
-            <TabsContent value="channels" className="mt-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {channels.map((channel: any) => (
-                  <Card key={channel.id}>
-                    <CardHeader>
-                      <CardTitle>{channel.name}</CardTitle>
-                      <CardDescription className="line-clamp-2">
-                        {channel.description || "No description provided"}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Subscribers:</span>
-                          <span>{channel.subscriberCount || 0}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Videos:</span>
-                          <span>{videos.filter((v: any) => v.userId === channel.userId).length}</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </TabsContent>
-          </Tabs>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card className="lg:col-span-2">
+            </div>
+
+            {/* Top Videos Table */}
+            <Card>
               <CardHeader>
                 <CardTitle>Top Performing Videos</CardTitle>
-                <CardDescription>Your most viewed content</CardDescription>
+                <CardDescription>Your most viewed and liked content</CardDescription>
               </CardHeader>
               <CardContent>
-                {videos && videos.length > 0 ? (
-                  <div className="space-y-4">
-                    {videos
-                      .sort((a: any, b: any) => (b.views || 0) - (a.views || 0))
-                      .slice(0, 5)
-                      .map((video: any) => (
-                        <div key={video.id} className="flex items-center space-x-4 border-b pb-4 last:border-0">
-                          <div className="w-16 h-9 bg-muted rounded overflow-hidden">
-                            <img 
-                              src={video.thumbnailPath || "/placeholder-thumbnail.jpg"} 
-                              alt={video.title}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{video.title}</p>
-                            <div className="flex items-center text-xs text-muted-foreground">
-                              <Eye className="h-3 w-3 mr-1" /> {video.views || 0}
-                              <ThumbsUp className="h-3 w-3 ml-3 mr-1" /> {video.likes || 0}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                {isLoadingVideos ? (
+                  <div className="flex justify-center items-center h-64">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   </div>
+                ) : videos && videos.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Video</TableHead>
+                        <TableHead className="text-right">Views</TableHead>
+                        <TableHead className="text-right">Likes</TableHead>
+                        <TableHead className="text-right">Duration</TableHead>
+                        <TableHead className="text-right">Posted Date</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {videos.sort((a, b) => {
+                          // Sort by views in descending order
+                          return (b.views || 0) - (a.views || 0);
+                        })
+                        .slice(0, 5)
+                        .map((video) => (
+                          <TableRow key={video.id}>
+                            <TableCell className="font-medium">
+                              <div className="flex items-center">
+                                <div className="w-10 h-10 rounded overflow-hidden mr-3 bg-muted flex-shrink-0">
+                                  {video.thumbnailPath ? (
+                                    <img 
+                                      src={video.thumbnailPath} 
+                                      alt={video.title} 
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-muted">
+                                      <Video className="h-5 w-5 text-muted-foreground" />
+                                    </div>
+                                  )}
+                                </div>
+                                <div>
+                                  <div className="font-medium truncate max-w-[200px]">
+                                    {truncateString(video.title, 30)}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {video.categories && video.categories.length > 0
+                                      ? video.categories.join(", ")
+                                      : "No categories"}
+                                  </div>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">{formatCount(video.views || 0)}</TableCell>
+                            <TableCell className="text-right">{formatCount(video.likes || 0)}</TableCell>
+                            <TableCell className="text-right">{formatDuration(video.duration || 0)}</TableCell>
+                            <TableCell className="text-right">{formatDate(video.createdAt)}</TableCell>
+                          </TableRow>
+                        ))}
+                    </TableBody>
+                  </Table>
                 ) : (
-                  <div className="flex items-center justify-center h-32 border rounded-lg">
-                    <p className="text-muted-foreground">No videos available</p>
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Video className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+                    <p>No videos uploaded yet</p>
+                    <Button 
+                      variant="outline" 
+                      className="mt-4"
+                      onClick={() => setLocation("/upload")}
+                    >
+                      <ArrowUpFromLine className="mr-2 h-4 w-4" />
+                      Upload a Video
+                    </Button>
                   </div>
                 )}
               </CardContent>
             </Card>
-            
+          </TabsContent>
+
+          <TabsContent value="content" className="space-y-6">
+            {/* Content tab implementation (to be built out more) */}
             <Card>
               <CardHeader>
-                <CardTitle>Quick Stats</CardTitle>
-                <CardDescription>At a glance metrics</CardDescription>
+                <CardTitle>Content Management</CardTitle>
+                <CardDescription>Analyze and manage your videos, playlists, and shorts</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center">
-                    <TrendingUp className="h-5 w-5 mr-3 text-green-500" />
-                    <div>
-                      <p className="text-sm font-medium">Most Growth</p>
-                      <p className="text-xs text-muted-foreground">
-                        Views up by 25% this month
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center">
-                    <Clock className="h-5 w-5 mr-3 text-blue-500" />
-                    <div>
-                      <p className="text-sm font-medium">Watch Time</p>
-                      <p className="text-xs text-muted-foreground">
-                        Average: 3m 45s per video
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center">
-                    <Users className="h-5 w-5 mr-3 text-purple-500" />
-                    <div>
-                      <p className="text-sm font-medium">Subscribers</p>
-                      <p className="text-xs text-muted-foreground">
-                        +12 new subscribers this week
-                      </p>
-                    </div>
-                  </div>
+                <p className="text-muted-foreground mb-6">This section will allow you to manage your content, analyze performance, and make adjustments to optimize engagement.</p>
+                
+                <Button variant="outline" onClick={() => setLocation(`/my-channel/${selectedChannelId}`)}>
+                  Go to Channel Management
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="audience" className="space-y-6">
+            {/* Audience tab implementation (to be built out more) */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Audience Insights</CardTitle>
+                <CardDescription>Understand your viewers and subscribers</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground mb-6">This section will show you demographic information, interests, and viewing habits of your audience.</p>
+                
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground mb-4">Audience insights coming soon...</p>
                 </div>
               </CardContent>
             </Card>
-          </div>
-        </>
+          </TabsContent>
+
+          <TabsContent value="revenue" className="space-y-6">
+            {/* Revenue tab implementation (to be built out more) */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Revenue & Monetization</CardTitle>
+                <CardDescription>Track earnings and optimize monetization</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground mb-6">This section will help you track ad revenue, manage monetization settings, and explore new income opportunities.</p>
+                
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground mb-4">Revenue tracking coming soon...</p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="settings" className="space-y-6">
+            {/* Settings tab implementation (to be built out more) */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Channel Settings</CardTitle>
+                <CardDescription>Configure your channel preferences</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground mb-6">This section will allow you to manage your channel settings, branding, and content preferences.</p>
+                
+                <Button variant="outline" onClick={() => setLocation(`/my-channels`)}>
+                  Manage Your Channels
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       )}
     </div>
   );

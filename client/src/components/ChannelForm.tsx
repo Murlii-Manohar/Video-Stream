@@ -1,85 +1,119 @@
-import { useState, useEffect } from "react";
-import { useAuth } from "@/context/AuthContext";
-import { useQueryClient, useMutation } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
+import React, { useState, useEffect } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, CameraIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ImageIcon, Loader2 } from "lucide-react";
+import { Channel } from "@shared/schema";
 
 interface ChannelFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  existingChannel?: any;
+  channelToEdit?: Channel;
+  onSuccess?: (channel: Channel) => void;
 }
 
-export default function ChannelForm({ open, onOpenChange, existingChannel }: ChannelFormProps) {
-  const { user } = useAuth();
+export default function ChannelForm({
+  open,
+  onOpenChange,
+  channelToEdit,
+  onSuccess,
+}: ChannelFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  
-  // Form state
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [bannerImage, setBannerImage] = useState<File | null>(null);
-  const [bannerPreview, setBannerPreview] = useState("");
-  
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  // Reset form when dialog opens/closes or channelToEdit changes
   useEffect(() => {
-    if (existingChannel) {
-      setName(existingChannel.name || "");
-      setDescription(existingChannel.description || "");
-      
-      if (existingChannel.bannerImage) {
-        setBannerPreview(existingChannel.bannerImage);
+    if (open) {
+      if (channelToEdit) {
+        setName(channelToEdit.name || "");
+        setDescription(channelToEdit.description || "");
+        setImagePreview(channelToEdit.bannerImage || null);
+      } else {
+        setName("");
+        setDescription("");
+        setBannerImage(null);
+        setImagePreview(null);
       }
-    } else {
-      // Reset form for new channel
-      setName("");
-      setDescription("");
-      setBannerImage(null);
-      setBannerPreview("");
     }
-  }, [existingChannel, open]);
-  
-  const createChannelMutation = useMutation({
+  }, [open, channelToEdit]);
+
+  const channelMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      const response = await apiRequest(
-        existingChannel ? "PATCH" : "POST",
-        existingChannel ? `/api/channels/${existingChannel.id}` : "/api/channels",
-        formData,
-        { isFormData: true }
-      );
+      const url = channelToEdit 
+        ? `/api/channels/${channelToEdit.id}` 
+        : "/api/channels";
+      const method = channelToEdit ? "PATCH" : "POST";
+      
+      const response = await apiRequest(method, url, formData, { 
+        isFormData: true 
+      });
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/channels/user'] });
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/channels"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/channels/user"] });
+      if (channelToEdit) {
+        queryClient.invalidateQueries({ queryKey: [`/api/channels/${channelToEdit.id}`] });
+      }
+      
       onOpenChange(false);
       toast({
-        title: existingChannel ? "Channel updated" : "Channel created",
-        description: existingChannel 
+        title: channelToEdit ? "Channel updated" : "Channel created",
+        description: channelToEdit 
           ? "Your channel has been updated successfully" 
           : "Your channel has been created successfully",
       });
+      
+      if (onSuccess) {
+        onSuccess(data);
+      }
     },
     onError: (error) => {
       toast({
-        title: existingChannel ? "Update failed" : "Creation failed",
-        description: error instanceof Error ? error.message : "Failed to save channel",
+        title: channelToEdit ? "Failed to update channel" : "Failed to create channel",
+        description: error instanceof Error ? error.message : "An error occurred",
         variant: "destructive",
       });
     },
   });
-  
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setBannerImage(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!name.trim()) {
       toast({
-        title: "Validation error",
-        description: "Channel name is required",
+        title: "Channel name required",
+        description: "Please provide a name for your channel",
         variant: "destructive",
       });
       return;
@@ -93,114 +127,99 @@ export default function ChannelForm({ open, onOpenChange, existingChannel }: Cha
       formData.append("bannerImage", bannerImage);
     }
     
-    createChannelMutation.mutate(formData);
+    channelMutation.mutate(formData);
   };
-  
-  const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setBannerImage(file);
-      
-      // Create a preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setBannerPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-  
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>{existingChannel ? "Edit Channel" : "Create New Channel"}</DialogTitle>
+          <DialogTitle>{channelToEdit ? "Edit Channel" : "Create a New Channel"}</DialogTitle>
           <DialogDescription>
-            {existingChannel 
-              ? "Update your channel details to better represent your content" 
-              : "Create a channel to start uploading and sharing your videos"}
+            {channelToEdit 
+              ? "Update your channel details below." 
+              : "Fill in the details below to create your channel."}
           </DialogDescription>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label htmlFor="channel-name">Channel Name *</Label>
-              <Input
-                id="channel-name"
-                placeholder="Enter channel name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
+        <form onSubmit={handleSubmit} className="space-y-6 py-4">
+          {/* Banner image upload */}
+          <div className="space-y-2">
+            <Label htmlFor="banner-image">Channel Banner</Label>
+            <div 
+              className="border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:bg-muted/50 transition-colors"
+              onClick={() => document.getElementById("banner-image")?.click()}
+            >
+              {imagePreview ? (
+                <div className="relative aspect-[16/3] rounded-md overflow-hidden">
+                  <img 
+                    src={imagePreview} 
+                    alt="Banner preview" 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-8">
+                  <ImageIcon className="h-10 w-10 text-muted-foreground mb-2" />
+                  <p className="text-sm text-muted-foreground mb-1">
+                    Click to upload a banner image
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Recommended size: 1280×380 pixels
+                  </p>
+                </div>
+              )}
+              <input 
+                type="file" 
+                id="banner-image" 
+                className="hidden" 
+                accept="image/*"
+                onChange={handleImageChange}
               />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="channel-description">Description</Label>
-              <Textarea
-                id="channel-description"
-                placeholder="Describe your channel content"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={3}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Banner Image</Label>
-              <div 
-                className="border-2 border-dashed rounded-md p-4 hover:bg-muted/50 transition-colors cursor-pointer relative"
-                onClick={() => document.getElementById('banner-upload')?.click()}
-              >
-                {bannerPreview ? (
-                  <div className="relative">
-                    <img 
-                      src={bannerPreview} 
-                      alt="Banner preview" 
-                      className="w-full h-32 object-cover rounded-md"
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity">
-                      <CameraIcon className="h-8 w-8 text-white" />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-4">
-                    <CameraIcon className="h-8 w-8 text-muted-foreground mb-2" />
-                    <p className="text-sm text-muted-foreground">Click to upload a banner image</p>
-                    <p className="text-xs text-muted-foreground">Recommended size: 1200 x 300 pixels</p>
-                  </div>
-                )}
-                <input
-                  type="file"
-                  id="banner-upload"
-                  className="hidden"
-                  accept="image/*"
-                  onChange={handleBannerChange}
-                />
-              </div>
             </div>
           </div>
           
-          <DialogFooter className="mt-4">
+          {/* Channel name */}
+          <div className="space-y-2">
+            <Label htmlFor="channel-name" className="required">Channel Name</Label>
+            <Input
+              id="channel-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Enter your channel name"
+              required
+            />
+          </div>
+          
+          {/* Channel description */}
+          <div className="space-y-2">
+            <Label htmlFor="channel-description">Channel Description</Label>
+            <Textarea
+              id="channel-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Provide a description of your channel"
+              rows={5}
+            />
+          </div>
+          
+          <DialogFooter>
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
+              disabled={channelMutation.isPending}
             >
               Cancel
             </Button>
-            <Button
+            <Button 
               type="submit"
-              disabled={createChannelMutation.isPending}
+              disabled={!name.trim() || channelMutation.isPending}
             >
-              {createChannelMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {existingChannel ? "Updating..." : "Creating..."}
-                </>
-              ) : (
-                existingChannel ? "Update Channel" : "Create Channel"
+              {channelMutation.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
+              {channelToEdit ? "Update Channel" : "Create Channel"}
             </Button>
           </DialogFooter>
         </form>

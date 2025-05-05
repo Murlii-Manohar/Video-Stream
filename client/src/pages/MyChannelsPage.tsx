@@ -1,194 +1,166 @@
-import { useState } from "react";
-import { useLocation } from "wouter";
-import { useAuth } from "@/context/AuthContext";
+import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Loader2, PlusIcon, CameraIcon, PencilIcon, LayoutDashboardIcon, Settings, ChevronRightIcon } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useLocation } from "wouter";
 import { formatDate } from "@/lib/utils";
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardFooter, 
+  CardHeader, 
+  CardTitle 
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import {
+  PlusIcon,
+  PencilIcon,
+  BrushIcon,
+  LayoutDashboardIcon,
+  Loader2Icon
+} from "lucide-react";
+import { Channel } from "@shared/schema";
 import ChannelForm from "@/components/ChannelForm";
 
 export default function MyChannelsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [, navigate] = useLocation();
-  const [channelFormOpen, setChannelFormOpen] = useState(false);
-  const [editingChannel, setEditingChannel] = useState<any>(null);
-  
-  // Fetch user's channels
-  const { data: channels, isLoading: channelsLoading } = useQuery({
-    queryKey: ['/api/channels/user'],
+  const [, setLocation] = useLocation();
+  const [showChannelForm, setShowChannelForm] = useState(false);
+  const [channelToEdit, setChannelToEdit] = useState<Channel | undefined>(undefined);
+
+  const { 
+    data: channels, 
+    isLoading, 
+    isError,
+    error 
+  } = useQuery<Channel[]>({
+    queryKey: ["/api/channels/user"],
     enabled: !!user,
   });
-  
-  // Handle create new channel
+
   const handleCreateChannel = () => {
-    setEditingChannel(null);
-    setChannelFormOpen(true);
+    setChannelToEdit(undefined);
+    setShowChannelForm(true);
   };
-  
-  // Handle edit channel
-  const handleEditChannel = (channel: any) => {
-    setEditingChannel(channel);
-    setChannelFormOpen(true);
+
+  const handleEditChannel = (channel: Channel) => {
+    setChannelToEdit(channel);
+    setShowChannelForm(true);
   };
-  
+
+  const handleViewDashboard = (channelId: number) => {
+    setLocation(`/dashboard?channelId=${channelId}`);
+  };
+
+  const handleManageContent = (channelId: number) => {
+    setLocation(`/my-channel/${channelId}`);
+  };
+
   if (!user) {
-    navigate("/auth");
+    setLocation("/auth");
     return null;
   }
-  
+
+  if (isError) {
+    toast({
+      title: "Error loading channels",
+      description: error instanceof Error ? error.message : "Failed to load your channels",
+      variant: "destructive",
+    });
+  }
+
   return (
     <div className="container py-8 max-w-6xl">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">My Channels</h1>
-          <p className="text-muted-foreground">Manage your content channels and uploads</p>
-        </div>
-        <Button onClick={handleCreateChannel}>
-          <PlusIcon className="mr-2 h-4 w-4" />
-          Create Channel
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">My Channels</h1>
+        <Button onClick={handleCreateChannel} className="rounded-full">
+          <PlusIcon className="h-4 w-4 mr-2" />
+          Create New Channel
         </Button>
       </div>
-      
-      {channelsLoading ? (
-        <div className="flex justify-center items-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+
+      {isLoading ? (
+        <div className="flex justify-center items-center h-64">
+          <Loader2Icon className="h-8 w-8 animate-spin text-primary" />
         </div>
       ) : channels && channels.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {channels.map((channel: any) => (
-            <ChannelCard 
-              key={channel.id} 
-              channel={channel}
-              onEdit={() => handleEditChannel(channel)}
-            />
+          {channels.map((channel) => (
+            <Card key={channel.id} className="overflow-hidden h-full flex flex-col">
+              <div 
+                className="h-32 bg-gradient-to-r from-primary/20 to-secondary/20 relative"
+                style={channel.bannerImage ? { backgroundImage: `url(${channel.bannerImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
+              />
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xl">{channel.name}</CardTitle>
+                <CardDescription>
+                  Created on {formatDate(channel.createdAt)}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex-grow">
+                <p className="text-sm text-muted-foreground line-clamp-3">
+                  {channel.description || "No description provided."}
+                </p>
+              </CardContent>
+              <CardFooter className="border-t bg-muted/30 px-6 py-4">
+                <div className="flex justify-between w-full space-x-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => handleEditChannel(channel)}
+                  >
+                    <PencilIcon className="h-4 w-4 mr-2" />
+                    Edit
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => handleViewDashboard(channel.id)}
+                  >
+                    <LayoutDashboardIcon className="h-4 w-4 mr-2" />
+                    Dashboard
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => handleManageContent(channel.id)}
+                  >
+                    <BrushIcon className="h-4 w-4 mr-2" />
+                    Manage
+                  </Button>
+                </div>
+              </CardFooter>
+            </Card>
           ))}
         </div>
       ) : (
-        <Card className="bg-muted/50">
-          <CardContent className="pt-6 px-6">
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="rounded-full bg-primary/10 p-6 mb-4">
-                <PlusIcon className="h-8 w-8 text-primary" />
-              </div>
-              <h2 className="text-xl font-semibold mb-2">Create Your First Channel</h2>
-              <p className="text-muted-foreground max-w-md mb-6">
-                Channels let you organize your content and build a following. Create a channel to start uploading videos.
-              </p>
-              <Button onClick={handleCreateChannel}>
-                <PlusIcon className="mr-2 h-4 w-4" />
-                Create Channel
-              </Button>
+        <Card className="bg-muted/30 border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-12 px-6 text-center">
+            <div className="bg-primary/10 p-4 rounded-full mb-4">
+              <PlusIcon className="h-12 w-12 text-primary" />
             </div>
+            <h2 className="text-xl font-semibold mb-2">No Channels Yet</h2>
+            <p className="text-muted-foreground mb-6 max-w-md">
+              You haven't created any channels yet. Start creating content by making your first channel.
+            </p>
+            <Button onClick={handleCreateChannel}>
+              <PlusIcon className="h-4 w-4 mr-2" />
+              Create New Channel
+            </Button>
           </CardContent>
         </Card>
       )}
-      
-      {/* Channel Creation Dialog */}
+
       <ChannelForm 
-        open={channelFormOpen} 
-        onOpenChange={setChannelFormOpen}
-        existingChannel={editingChannel}
+        open={showChannelForm} 
+        onOpenChange={setShowChannelForm} 
+        channelToEdit={channelToEdit} 
       />
     </div>
-  );
-}
-
-interface ChannelCardProps {
-  channel: any;
-  onEdit: () => void;
-}
-
-function ChannelCard({ channel, onEdit }: ChannelCardProps) {
-  const [, navigate] = useLocation();
-  
-  return (
-    <Card className="overflow-hidden hover:shadow-md transition-shadow">
-      <div className="h-32 bg-gradient-to-r from-primary/20 to-secondary/20 relative">
-        {channel.bannerImage ? (
-          <img 
-            src={channel.bannerImage} 
-            alt={`${channel.name} banner`}
-            className="w-full h-full object-cover"
-          />
-        ) : null}
-        <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-          <h3 className="text-white text-xl font-bold">{channel.name}</h3>
-        </div>
-        <div className="absolute top-4 right-4">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full bg-white/10 hover:bg-white/20 text-white">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-more-vertical w-5 h-5">
-                  <circle cx="12" cy="12" r="1"></circle>
-                  <circle cx="12" cy="5" r="1"></circle>
-                  <circle cx="12" cy="19" r="1"></circle>
-                </svg>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={onEdit}>
-                <PencilIcon className="mr-2 h-4 w-4" />
-                Edit Channel
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate(`/channel/dashboard/${channel.id}`)}>
-                <LayoutDashboardIcon className="mr-2 h-4 w-4" />
-                Dashboard
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate(`/channel/settings/${channel.id}`)}>
-                <Settings className="mr-2 h-4 w-4" />
-                Settings
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigate(`/channel/${channel.id}`);
-                }}
-              >
-                <ChevronRightIcon className="mr-2 h-4 w-4" />
-                View Channel
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
-      <CardHeader className="pb-0">
-        <div className="flex justify-between items-start">
-          <div>
-            <CardTitle>{channel.name}</CardTitle>
-            <CardDescription className="line-clamp-2 mt-1">
-              {channel.description || "No description provided"}
-            </CardDescription>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="pb-0">
-        <div className="flex justify-between text-sm">
-          <div>Created:</div>
-          <div className="text-muted-foreground">
-            {formatDate(channel.createdAt)}
-          </div>
-        </div>
-      </CardContent>
-      <CardFooter className="pt-4">
-        <Button 
-          variant="secondary" 
-          size="sm" 
-          className="w-full"
-          onClick={() => navigate(`/upload?channelId=${channel.id}`)}
-        >
-          <PlusIcon className="h-4 w-4 mr-2" />
-          Upload Video
-        </Button>
-      </CardFooter>
-    </Card>
   );
 }
