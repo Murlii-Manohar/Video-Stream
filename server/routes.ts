@@ -1623,10 +1623,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Admin video creation endpoint
-  app.post('/api/admin/videos', requireAdmin, handleValidation(insertVideoSchema), async (req, res) => {
+  // Admin video creation endpoint - allows direct video addition without file upload
+  app.post('/api/admin/videos', requireAdmin, async (req, res) => {
     try {
       const { userId, title, description, filePath, thumbnailPath, duration, categories, tags, isQuickie, isPublished } = req.body;
+      
+      // Validate required fields
+      if (!userId || !title || !filePath) {
+        return res.status(400).json({ 
+          message: 'Missing required fields', 
+          required: ['userId', 'title', 'filePath'] 
+        });
+      }
       
       // Validate that the provided user exists
       const user = await storage.getUser(userId);
@@ -1635,28 +1643,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Use AI content tagging to enhance metadata
-      const { categories: enhancedCategories, tags: enhancedTags } = tagContent({
+      const { categories: enhancedCategories, tags: enhancedTags, contentType } = tagContent({
         title,
-        description,
-        tags,
-        duration,
-        isQuickie
+        description: description || "",
+        tags: tags || [],
+        duration: duration || 0,
+        isQuickie: isQuickie || false
       });
       
-      // Create video with the provided data
-      const video = await storage.createVideo({
+      // Prepare final data (with defaults for missing values)
+      const videoData = {
         userId,
         title,
-        description,
+        description: description || null,
         filePath,
-        thumbnailPath,
-        duration,
+        thumbnailPath: thumbnailPath || null,
+        duration: duration || null,
         categories: categories || enhancedCategories,
         tags: tags || enhancedTags,
-        isQuickie: isQuickie || false,
-        isPublished: isPublished || true
-      });
+        isQuickie: isQuickie !== undefined ? isQuickie : (contentType === 'quickie'),
+        isPublished: isPublished !== undefined ? isPublished : true,
+        views: 0,
+        likes: 0,
+        dislikes: 0,
+        hasAds: false,
+        adUrl: null,
+        adStartTime: null
+      };
       
+      // Create video with the provided data
+      const video = await storage.createVideo(videoData);
+      
+      console.log('Admin created video successfully:', JSON.stringify(video));
       res.status(201).json(video);
     } catch (error) {
       console.error('Admin create video error:', error);
