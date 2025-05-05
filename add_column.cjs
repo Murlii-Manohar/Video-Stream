@@ -1,13 +1,5 @@
-import { Pool } from 'pg';
-import dotenv from 'dotenv';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-
-// Get the current file path in ESM
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-dotenv.config();
+const { Pool } = require('pg');
+require('dotenv').config();
 
 async function runMigration() {
   const connectionString = process.env.DATABASE_URL;
@@ -57,5 +49,3 @@ async function runMigration() {
 
 // Run the migration
 runMigration().catch(console.error);
-
-export { runMigration };

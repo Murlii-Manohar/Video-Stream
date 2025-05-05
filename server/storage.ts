@@ -37,7 +37,7 @@ export interface IStorage {
   updateVideo(id: number, videoData: Partial<Video>): Promise<Video | undefined>;
   deleteVideo(id: number): Promise<boolean>;
   incrementVideoViews(id: number): Promise<Video | undefined>;
-  toggleVideoAds(id: number, hasAds: boolean, adUrl?: string, adStartTime?: number): Promise<Video | undefined>;
+  toggleVideoAds(id: number, hasAds: boolean, adUrl?: string, adStartTime?: number, adSkippable?: boolean): Promise<Video | undefined>;
   
   // Comment methods
   getComment(id: number): Promise<Comment | undefined>;
@@ -333,7 +333,7 @@ export class MemStorage implements IStorage {
     return updatedVideo;
   }
 
-  async toggleVideoAds(id: number, hasAds: boolean, adUrl?: string, adStartTime?: number): Promise<Video | undefined> {
+  async toggleVideoAds(id: number, hasAds: boolean, adUrl?: string, adStartTime?: number, adSkippable?: boolean): Promise<Video | undefined> {
     const video = await this.getVideo(id);
     if (!video) return undefined;
     
@@ -341,7 +341,8 @@ export class MemStorage implements IStorage {
       ...video, 
       hasAds,
       adUrl: hasAds ? (adUrl || video.adUrl) : null,
-      adStartTime: hasAds ? (adStartTime || video.adStartTime) : null
+      adStartTime: hasAds ? (adStartTime || video.adStartTime) : null,
+      adSkippable: hasAds ? (adSkippable !== undefined ? adSkippable : video.adSkippable) : true
     };
     
     this.videos.set(id, updatedVideo);
