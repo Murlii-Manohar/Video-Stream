@@ -1622,6 +1622,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: 'Server error' });
     }
   });
+  
+  // Admin video creation endpoint
+  app.post('/api/admin/videos', requireAdmin, handleValidation(insertVideoSchema), async (req, res) => {
+    try {
+      const { userId, title, description, filePath, thumbnailPath, duration, categories, tags, isQuickie, isPublished } = req.body;
+      
+      // Validate that the provided user exists
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(400).json({ message: 'User not found' });
+      }
+      
+      // Use AI content tagging to enhance metadata
+      const { categories: enhancedCategories, tags: enhancedTags } = tagContent({
+        title,
+        description,
+        tags,
+        duration,
+        isQuickie
+      });
+      
+      // Create video with the provided data
+      const video = await storage.createVideo({
+        userId,
+        title,
+        description,
+        filePath,
+        thumbnailPath,
+        duration,
+        categories: categories || enhancedCategories,
+        tags: tags || enhancedTags,
+        isQuickie: isQuickie || false,
+        isPublished: isPublished || true
+      });
+      
+      res.status(201).json(video);
+    } catch (error) {
+      console.error('Admin create video error:', error);
+      res.status(500).json({ message: 'Server error during video creation' });
+    }
+  });
 
   app.post('/api/admin/users/:id/ban', requireAdmin, async (req, res) => {
     try {
