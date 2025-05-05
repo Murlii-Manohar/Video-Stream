@@ -501,12 +501,19 @@ export class MemStorage implements IStorage {
   }
 }
 
-import { dynamoDBStorage } from './dynamoDBStorage';
+// Create an in-memory storage instance
+export const memStorage = new MemStorage();
 
-// We'll explicitly use DynamoDB storage
+// Set default PostgreSQL as the storage provider
 console.log('----------------------');
-console.log('Storage selection: Forcing DynamoDB storage');
+console.log('Storage selection: Using PostgreSQL storage');
 console.log('----------------------');
 
-// Create and export the appropriate storage
-export const storage = dynamoDBStorage;
+// Import the PostgreSQL storage implementation
+import { PostgresDBStorage } from './postgresDBStorage';
+
+// Create and export the PostgreSQL storage instance
+export const postgresDBStorage = new PostgresDBStorage();
+
+// Export the default storage to use throughout the application
+export const storage = postgresDBStorage;
