@@ -17,7 +17,7 @@ export default function Privacy() {
       <div className="prose prose-lg dark:prose-invert max-w-none">
         <h1>Privacy Policy</h1>
         
-        <p>At XPlayHD, we respect your privacy and are committed to protecting your personal data. This Privacy Policy explains how we collect, use, and safeguard your information when you use our platform.</p>
+        <p>At PornVilla, we respect your privacy and are committed to protecting your personal data. This Privacy Policy explains how we collect, use, and safeguard your information when you use our platform.</p>
         
         <h2>1. Information We Collect</h2>
         <p>We collect the following types of information:</p>
@@ -71,7 +71,7 @@ export default function Privacy() {
         <p>We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new policy on this page and updating the "Last updated" date.</p>
         
         <h2>9. Contact Us</h2>
-        <p>If you have any questions about this Privacy Policy, please contact us at privacy@xplayhd.com.</p>
+        <p>If you have any questions about this Privacy Policy, please contact us at privacy@pornvilla.com.</p>
         
         <p className="text-muted-foreground mt-8">Last updated: May 1, 2025</p>
       </div>
