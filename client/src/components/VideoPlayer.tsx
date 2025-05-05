@@ -271,12 +271,34 @@ export function VideoPlayer({ src, poster, onEnded }: VideoPlayerProps) {
           </div>
           
           <div className="flex items-center space-x-4">
-            <button 
-              className="text-white focus:outline-none"
-              aria-label="Settings"
-            >
-              <SettingsIcon className="h-5 w-5" />
-            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button 
+                  className="text-white focus:outline-none"
+                  aria-label="Settings"
+                  onClick={() => setSettingsOpen(!settingsOpen)}
+                >
+                  <SettingsIcon className="h-5 w-5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40 bg-black bg-opacity-90 border-gray-700">
+                <div className="px-2 py-1.5 text-sm font-medium text-white border-b border-gray-700">
+                  Video Quality
+                </div>
+                {qualityOptions.map((quality) => (
+                  <DropdownMenuItem 
+                    key={quality}
+                    className="flex justify-between items-center cursor-pointer text-white hover:bg-gray-800"
+                    onClick={() => handleQualityChange(quality)}
+                  >
+                    {quality}
+                    {currentQuality === quality && (
+                      <CheckIcon className="h-4 w-4 ml-2" />
+                    )}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
             
             <button 
               className="text-white focus:outline-none"
