@@ -3,6 +3,8 @@ import { useRoute, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { CommentSection } from "@/components/CommentSection";
+import { VideoInteractions } from "@/components/VideoInteractions";
+import { SubscribeButton } from "@/components/SubscribeButton";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { apiRequest } from "@/lib/queryClient";
@@ -75,23 +77,18 @@ export default function Watch() {
     return formatDistanceToNow(new Date(date), { addSuffix: true });
   };
   
-  // Handle subscribe click
-  const handleSubscribe = () => {
-    if (!user) {
-      toast({
-        title: "Login required",
-        description: "Please login to subscribe to this channel",
-        variant: "destructive"
-      });
-      return;
+  // Track video view
+  useEffect(() => {
+    if (videoId) {
+      // Record view after a few seconds to ensure actual viewing
+      const timer = setTimeout(() => {
+        fetch(`/api/videos/${videoId}/view`, { method: 'POST' })
+          .catch(err => console.error('Error recording view:', err));
+      }, 5000);
+      
+      return () => clearTimeout(timer);
     }
-    
-    // Subscription logic to be implemented
-    toast({
-      title: "Subscribed",
-      description: `You've subscribed to ${video.creator.displayName || video.creator.username}`
-    });
-  };
+  }, [videoId]);
   
   if (isLoading) {
     return (
@@ -136,42 +133,15 @@ export default function Watch() {
               <span className="mx-2">•</span>
               <span>{formatDate(video.createdAt)}</span>
             </div>
-            <div className="flex items-center space-x-4">
-              <Button 
-                variant="ghost"
-                className="flex items-center space-x-1"
-                onClick={() => {
-                  if (!user) {
-                    toast({
-                      title: "Login required",
-                      description: "Please login to like videos",
-                      variant: "destructive"
-                    });
-                    return;
-                  }
-                  likeVideoMutation.mutate();
-                }}
-              >
-                <ThumbsUp className="h-4 w-4" />
-                <span>{video.likes}</span>
-              </Button>
-              <Button variant="ghost" className="flex items-center space-x-1">
-                <ThumbsDown className="h-4 w-4" />
-                <span>{video.dislikes}</span>
-              </Button>
-              <Button 
-                variant="ghost" 
-                className="flex items-center space-x-1"
-                onClick={handleShare}
-              >
-                <Share2 className="h-4 w-4" />
-                <span className="hidden sm:inline">Share</span>
-              </Button>
-              <Button variant="ghost" className="flex items-center space-x-1">
-                <Bookmark className="h-4 w-4" />
-                <span className="hidden sm:inline">Save</span>
-              </Button>
-            </div>
+            
+            {/* Using VideoInteractions component for consistent like/dislike behavior */}
+            <VideoInteractions 
+              videoId={video.id}
+              initialLikes={video.likes || 0}
+              initialDislikes={video.dislikes || 0}
+              initialUserLiked={video.userLiked}
+              initialUserDisliked={video.userDisliked}
+            />
           </div>
         </div>
         
@@ -207,13 +177,11 @@ export default function Watch() {
               )}
             </div>
           </div>
-          <Button 
-            onClick={handleSubscribe}
-            variant="default"
-            className="bg-primary text-white"
-          >
-            Subscribe
-          </Button>
+          <SubscribeButton 
+            channelId={video.creator.id} 
+            channelName={video.creator.displayName || video.creator.username}
+            initialIsSubscribed={video.isUserSubscribed}
+          />
         </div>
         
         {/* Comments section */}
