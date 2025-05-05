@@ -252,6 +252,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Special route to serve full path videos
   app.get('/api/media/direct', (req, res) => {
+    // Add CORS headers for video files
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Range');
+    res.header('Access-Control-Expose-Headers', 'Content-Range, Accept-Ranges, Content-Length');
+    
     const filePath = req.query.path as string;
     
     if (!filePath) {
