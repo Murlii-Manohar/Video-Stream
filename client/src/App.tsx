@@ -76,7 +76,7 @@ function Router() {
               <Route path="/watch/:id" component={Watch} />
               <Route path="/quickies" component={Quickies} />
               <Route path="/explore" component={Explore} />
-              <ProtectedRoute path="/history" component={History} />
+              <Route path="/history" component={History} />
               
               {/* User account routes */}
               <ProtectedRoute path="/my-channel" component={MyChannel} />
