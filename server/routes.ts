@@ -19,7 +19,7 @@ import session from "express-session";
 import MemoryStore from "memorystore";
 import { initializeEmailService, sendVerificationEmail, verifyCode } from "./services/emailService";
 import { tagContent, suggestRelatedContentIds, extractKeywords } from "./services/contentTaggingService";
-import { uploadVideo, getVideoWithSignedUrls, deleteVideo, updateVideo } from "./services/videoService";
+import { uploadVideo, getVideoWithSignedUrls, deleteVideo, updateVideo, updateVideoThumbnail } from "./services/videoService";
 import { initializeS3Service } from "./services/s3Service";
 
 // Create a memory store for sessions
