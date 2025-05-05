@@ -20,8 +20,11 @@ export function AgeVerification() {
   };
 
   const handleReject = () => {
-    // Redirect to YouTube
-    window.location.href = "https://www.youtube.com/channel/UCbCmjCuTUZos6Inko4u57UQ";
+    // Close the current window
+    window.close();
+    
+    // If window.close() doesn't work (many browsers prevent it), redirect to about:blank
+    window.location.href = "about:blank";
   };
 
   return (
