@@ -46,6 +46,7 @@ export const videos = pgTable("videos", {
   hasAds: boolean("has_ads").default(false),
   adUrl: text("ad_url"),
   adStartTime: integer("ad_start_time"),
+  adSkippable: boolean("ad_skippable").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
