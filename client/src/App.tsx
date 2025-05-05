@@ -54,7 +54,7 @@ function Router() {
       <Header toggleSidebar={toggleSidebar} />
       <div className="flex relative">
         <Sidebar isOpen={sidebarOpen} />
-        <main className={`flex-1 w-full transition-all duration-300 min-h-[calc(100vh-64px)] ${sidebarOpen ? "ml-0 md:ml-64" : "ml-0"}`}>
+        <main className="flex-1 w-full transition-all duration-300 min-h-[calc(100vh-64px)] md:ml-64">
           <div className="p-2 sm:p-4 md:p-6">
             <Switch>
               {/* Main navigation */}
