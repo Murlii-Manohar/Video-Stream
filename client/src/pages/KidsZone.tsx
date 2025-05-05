@@ -11,12 +11,38 @@ export default function KidsZone() {
           Woah There, Little One!
         </h1>
         
-        <div className="w-full max-w-md mx-auto mb-8">
-          <img 
-            src="https://i.imgur.com/YFtZ9hc.png" 
-            alt="Cartoon baby" 
-            className="w-full h-auto rounded-lg shadow-lg"
-          />
+        <div className="w-full max-w-md mx-auto mb-8 flex justify-center">
+          <div className="bg-white p-4 rounded-lg shadow-lg w-64 h-64">
+            <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+              {/* Face */}
+              <circle cx="100" cy="100" r="70" fill="#FFCCAA" />
+              
+              {/* Eyes */}
+              <ellipse cx="70" cy="80" rx="12" ry="16" fill="white" stroke="#333" strokeWidth="2" />
+              <ellipse cx="130" cy="80" rx="12" ry="16" fill="white" stroke="#333" strokeWidth="2" />
+              <circle cx="70" cy="80" r="5" fill="#333" />
+              <circle cx="130" cy="80" r="5" fill="#333" />
+              
+              {/* Eyebrows */}
+              <path d="M60 65 Q70 55 80 65" fill="none" stroke="#333" strokeWidth="3" strokeLinecap="round" />
+              <path d="M120 65 Q130 55 140 65" fill="none" stroke="#333" strokeWidth="3" strokeLinecap="round" />
+              
+              {/* Mouth */}
+              <path d="M75 120 Q100 140 125 120" fill="none" stroke="#333" strokeWidth="3" strokeLinecap="round" />
+              
+              {/* Blush */}
+              <circle cx="60" cy="100" r="10" fill="#FFB6C1" opacity="0.7" />
+              <circle cx="140" cy="100" r="10" fill="#FFB6C1" opacity="0.7" />
+              
+              {/* Hair */}
+              <path d="M40 60 Q50 20 100 40 Q150 20 160 60" fill="#FFD700" />
+              
+              {/* Pacifier */}
+              <circle cx="100" cy="120" r="12" fill="#FF6B6B" stroke="#333" strokeWidth="2" />
+              <circle cx="100" cy="120" r="5" fill="#FFFFFF" />
+              <path d="M88 120 Q85 130 80 132" fill="none" stroke="#333" strokeWidth="2" />
+            </svg>
+          </div>
         </div>
         
         <Card className="mb-8 bg-white/80 backdrop-blur border-2 border-blue-300">
