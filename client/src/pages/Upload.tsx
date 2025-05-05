@@ -1,10 +1,10 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,6 +45,12 @@ export default function Upload() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [videoDuration, setVideoDuration] = useState<number | null>(null);
+  
+  // Query to check if user has channels
+  const { data: channels, isLoading: isLoadingChannels } = useQuery<any[]>({
+    queryKey: ['/api/channels/user'],
+    enabled: !!user,
+  });
   
   // Form definition
   const form = useForm<UploadFormValues>({
@@ -220,6 +226,7 @@ export default function Upload() {
     uploadMutation.mutate(formData);
   };
   
+  // Check user authentication
   if (!user) {
     return (
       <div className="container py-8">
@@ -230,6 +237,29 @@ export default function Upload() {
           </CardHeader>
           <CardFooter>
             <Button onClick={() => navigate("/")}>Go to Home</Button>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
+  
+  // Check if user has channels
+  if (!isLoadingChannels && (!channels || channels.length === 0)) {
+    return (
+      <div className="container py-8">
+        <Card>
+          <CardHeader>
+            <CardTitle>Channel Required</CardTitle>
+            <CardDescription>You need to create a channel before uploading videos</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground mb-4">
+              To upload videos on XPlayHD, you need to create at least one channel. Channels allow you to organize your content and build a following.
+            </p>
+          </CardContent>
+          <CardFooter className="flex gap-2">
+            <Button onClick={() => navigate("/my-channels/create")}>Create a Channel</Button>
+            <Button variant="outline" onClick={() => navigate("/")}>Go to Home</Button>
           </CardFooter>
         </Card>
       </div>

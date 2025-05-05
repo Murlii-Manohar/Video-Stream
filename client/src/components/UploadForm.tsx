@@ -198,6 +198,16 @@ export default function UploadForm({ open, onOpenChange }: UploadFormProps) {
       return;
     }
     
+    // Validate channel selection - channel is now required
+    if (!values.channelId) {
+      toast({
+        title: "Error",
+        description: "Please select a channel for your video. You must have a channel to upload content.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setUploading(true);
     
     // Prepare form data
@@ -210,10 +220,7 @@ export default function UploadForm({ open, onOpenChange }: UploadFormProps) {
     // Convert tags to a string (it will be parsed back to array on the server)
     formData.append("tags", values.tags || "");
     formData.append("isQuickie", values.isQuickie.toString());
-    
-    if (values.channelId) {
-      formData.append("channelId", values.channelId.toString());
-    }
+    formData.append("channelId", values.channelId.toString());
     
     // Simulate upload progress (in a real app, this would be from actual upload progress)
     const simulateProgress = () => {
