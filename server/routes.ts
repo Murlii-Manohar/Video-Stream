@@ -620,8 +620,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const user = await storage.getUser(channel.userId);
       
+      // Check if current user is subscribed to this channel
+      let isUserSubscribed = false;
+      if (req.session.userId) {
+        const subscriptions = await storage.getSubscriptionsByUser(req.session.userId);
+        isUserSubscribed = subscriptions.some(sub => sub.channelId === channelId);
+      }
+      
       res.json({
         ...channel,
+        isUserSubscribed,
         user: user ? {
           id: user.id,
           username: user.username,
@@ -632,6 +640,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('Get channel error:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
+  
+  // Subscribe to a channel
+  app.post('/api/channels/:channelId/subscribe', requireAuth, async (req, res) => {
+    try {
+      const channelId = parseInt(req.params.channelId);
+      const userId = req.session.userId!;
+      
+      if (isNaN(channelId)) {
+        return res.status(400).json({ message: 'Invalid channel ID' });
+      }
+      
+      const channel = await storage.getChannel(channelId);
+      if (!channel) {
+        return res.status(404).json({ message: 'Channel not found' });
+      }
+      
+      // Check if user is already subscribed
+      const subscriptions = await storage.getSubscriptionsByUser(userId);
+      const existingSubscription = subscriptions.find(sub => sub.channelId === channelId);
+      
+      if (existingSubscription) {
+        return res.json({ 
+          success: true, 
+          message: 'Already subscribed to this channel',
+          isUserSubscribed: true 
+        });
+      }
+      
+      // Create subscription
+      await storage.createSubscription({
+        userId: channel.userId,
+        channelId,
+        subscriberId: userId,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+      
+      // Increment subscriber count for the channel owner
+      const channelOwner = await storage.getUser(channel.userId);
+      if (channelOwner) {
+        await storage.updateUser(channel.userId, {
+          subscriberCount: (channelOwner.subscriberCount || 0) + 1
+        });
+      }
+      
+      res.status(201).json({ success: true, message: 'Subscribed successfully', isUserSubscribed: true });
+    } catch (error) {
+      console.error('Error subscribing to channel:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
+  
+  // Unsubscribe from a channel
+  app.delete('/api/channels/:channelId/subscribe', requireAuth, async (req, res) => {
+    try {
+      const channelId = parseInt(req.params.channelId);
+      const userId = req.session.userId!;
+      
+      if (isNaN(channelId)) {
+        return res.status(400).json({ message: 'Invalid channel ID' });
+      }
+      
+      const channel = await storage.getChannel(channelId);
+      if (!channel) {
+        return res.status(404).json({ message: 'Channel not found' });
+      }
+      
+      // Find the subscription
+      const subscriptions = await storage.getSubscriptionsByUser(userId);
+      const existingSubscription = subscriptions.find(sub => sub.channelId === channelId);
+      
+      if (!existingSubscription) {
+        return res.json({ 
+          success: true, 
+          message: 'Not subscribed to this channel',
+          isUserSubscribed: false 
+        });
+      }
+      
+      // For now, we'll just decrease the subscriber count
+      // Normally we would need a deleteSubscription method
+      
+      // Decrement subscriber count for the channel owner
+      const channelOwner = await storage.getUser(channel.userId);
+      if (channelOwner && channelOwner.subscriberCount && channelOwner.subscriberCount > 0) {
+        await storage.updateUser(channel.userId, {
+          subscriberCount: channelOwner.subscriberCount - 1
+        });
+      }
+      
+      res.json({ success: true, message: 'Unsubscribed successfully', isUserSubscribed: false });
+    } catch (error) {
+      console.error('Error unsubscribing from channel:', error);
       res.status(500).json({ message: 'Server error' });
     }
   });

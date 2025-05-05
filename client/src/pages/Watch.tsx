@@ -19,6 +19,37 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
+interface VideoWithCreator {
+  id: number;
+  title: string;
+  description?: string;
+  filePath: string;
+  thumbnailPath?: string;
+  views: number;
+  likes: number;
+  dislikes: number;
+  createdAt: string;
+  updatedAt: string;
+  isQuickie: boolean;
+  duration: number;
+  categories: string[];
+  tags: string[];
+  isPublished: boolean;
+  hasAds: boolean;
+  adUrl?: string;
+  adStartTime?: number;
+  userLiked?: boolean;
+  userDisliked?: boolean;
+  isUserSubscribed?: boolean;
+  creator: {
+    id: number;
+    username: string;
+    displayName?: string;
+    profileImage?: string;
+    subscriberCount?: number;
+  };
+}
+
 export default function Watch() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -27,8 +58,8 @@ export default function Watch() {
   const videoId = match ? parseInt(params.id) : null;
   
   // Fetch video details
-  const { data: video, isLoading, error } = useQuery({
-    queryKey: videoId ? [`/api/videos/${videoId}`] : null,
+  const { data: video, isLoading, error } = useQuery<VideoWithCreator>({
+    queryKey: videoId ? [`/api/videos/${videoId}`] : [],
     enabled: !!videoId,
   });
   
