@@ -20,8 +20,8 @@ const s3Client = new S3Client({
 });
 
 // Bucket name configuration
-const BUCKET_NAME = 'xplayhd-videos';
-const THUMBNAIL_BUCKET_NAME = 'xplayhd-thumbnails';
+const BUCKET_NAME = 'pornvilla-videos';
+const THUMBNAIL_BUCKET_NAME = 'pornvilla-thumbnails';
 
 // Maximum expiry time for signed URLs (in seconds)
 const URL_EXPIRY = 60 * 60; // 1 hour

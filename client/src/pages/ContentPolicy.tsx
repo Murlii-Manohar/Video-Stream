@@ -17,10 +17,10 @@ export default function ContentPolicy() {
       <div className="prose prose-lg dark:prose-invert max-w-none">
         <h1>Content Policy</h1>
         
-        <p>XPlayHD is committed to providing a platform for adult content that respects the rights and dignity of all individuals. This Content Policy outlines the types of content that are prohibited on our platform.</p>
+        <p>PornVilla is committed to providing a platform for adult content that respects the rights and dignity of all individuals. This Content Policy outlines the types of content that are prohibited on our platform.</p>
 
         <h2>1. Age Requirements</h2>
-        <p>All individuals appearing in content uploaded to XPlayHD must be over the age of 18 at the time the content was created. Content creators are required to verify the age of all participants and maintain appropriate records.</p>
+        <p>All individuals appearing in content uploaded to PornVilla must be over the age of 18 at the time the content was created. Content creators are required to verify the age of all participants and maintain appropriate records.</p>
         
         <h2>2. Consent</h2>
         <p>All individuals appearing in content must have provided explicit consent for:</p>
@@ -32,7 +32,7 @@ export default function ContentPolicy() {
         <p>Content creators must obtain and maintain records of this consent.</p>
         
         <h2>3. Prohibited Content</h2>
-        <p>The following types of content are strictly prohibited on XPlayHD:</p>
+        <p>The following types of content are strictly prohibited on PornVilla:</p>
         <ul>
           <li>Content featuring individuals under the age of 18</li>
           <li>Non-consensual content, including any form of sexual assault or coercion</li>
@@ -47,7 +47,7 @@ export default function ContentPolicy() {
         </ul>
         
         <h2>4. Content Review Process</h2>
-        <p>All content uploaded to XPlayHD is subject to review to ensure compliance with this policy. We may:</p>
+        <p>All content uploaded to PornVilla is subject to review to ensure compliance with this policy. We may:</p>
         <ul>
           <li>Review content before it is published</li>
           <li>Remove content that violates our policies</li>
@@ -56,10 +56,10 @@ export default function ContentPolicy() {
         </ul>
         
         <h2>5. Copyright and Intellectual Property</h2>
-        <p>You must own all rights to the content you upload or have explicit permission from the copyright holder. XPlayHD respects the intellectual property rights of others and complies with the Digital Millennium Copyright Act (DMCA).</p>
+        <p>You must own all rights to the content you upload or have explicit permission from the copyright holder. PornVilla respects the intellectual property rights of others and complies with the Digital Millennium Copyright Act (DMCA).</p>
         
         <h2>6. Model Releases</h2>
-        <p>Content creators are responsible for obtaining appropriate model releases from all individuals appearing in their content. These releases should grant permission for the content to be distributed on platforms like XPlayHD.</p>
+        <p>Content creators are responsible for obtaining appropriate model releases from all individuals appearing in their content. These releases should grant permission for the content to be distributed on platforms like PornVilla.</p>
         
         <h2>7. Reporting Violations</h2>
         <p>If you believe content on XPlayHD violates this policy, please report it immediately. We take all reports seriously and will investigate promptly.</p>

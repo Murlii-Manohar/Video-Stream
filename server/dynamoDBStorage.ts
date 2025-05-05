@@ -29,14 +29,14 @@ import * as crypto from "crypto";
 
 // DynamoDB Table Names
 const TABLES = {
-  USERS: "XPlayHD_Users",
-  CHANNELS: "XPlayHD_Channels",
-  VIDEOS: "XPlayHD_Videos",
-  COMMENTS: "XPlayHD_Comments",
-  SUBSCRIPTIONS: "XPlayHD_Subscriptions",
-  LIKED_VIDEOS: "XPlayHD_LikedVideos",
-  VIDEO_HISTORY: "XPlayHD_VideoHistory",
-  SITE_SETTINGS: "XPlayHD_SiteSettings"
+  USERS: "PornVilla_Users",
+  CHANNELS: "PornVilla_Channels",
+  VIDEOS: "PornVilla_Videos",
+  COMMENTS: "PornVilla_Comments",
+  SUBSCRIPTIONS: "PornVilla_Subscriptions",
+  LIKED_VIDEOS: "PornVilla_LikedVideos",
+  VIDEO_HISTORY: "PornVilla_VideoHistory",
+  SITE_SETTINGS: "PornVilla_SiteSettings"
 };
 
 export class DynamoDBStorage implements IStorage {
