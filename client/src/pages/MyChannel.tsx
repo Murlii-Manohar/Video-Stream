@@ -14,7 +14,8 @@ import {
   MessageSquare,
   Edit,
   Trash2,
-  PlusIcon
+  PlusIcon,
+  AlertTriangle
 } from "lucide-react";
 import {
   Card,
@@ -50,6 +51,17 @@ import {
 import ChannelForm from "@/components/ChannelForm";
 import UploadForm from "@/components/UploadForm";
 import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function MyChannel() {
   const { user } = useAuth();
@@ -60,6 +72,8 @@ export default function MyChannel() {
   const [uploadFormOpen, setUploadFormOpen] = useState(false);
   const [selectedChannel, setSelectedChannel] = useState<any>(null);
   const [editingChannel, setEditingChannel] = useState<any>(null);
+  const [videoToDelete, setVideoToDelete] = useState<number | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   // Fetch user's channels
   const { data: channels, isLoading: channelsLoading } = useQuery({
@@ -133,10 +147,18 @@ export default function MyChannel() {
     setUploadFormOpen(true);
   };
 
-  // Handle delete video
+  // Handle delete video 
   const handleDeleteVideo = (videoId: number) => {
-    if (window.confirm("Are you sure you want to delete this video?")) {
-      deleteVideoMutation.mutate(videoId);
+    setVideoToDelete(videoId);
+    setIsDeleteDialogOpen(true);
+  };
+  
+  // Handle confirm video deletion
+  const confirmVideoDelete = () => {
+    if (videoToDelete !== null) {
+      deleteVideoMutation.mutate(videoToDelete);
+      setVideoToDelete(null);
+      setIsDeleteDialogOpen(false);
     }
   };
 
@@ -496,6 +518,31 @@ export default function MyChannel() {
         open={uploadFormOpen} 
         onOpenChange={setUploadFormOpen}
       />
+      
+      {/* Delete Video Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-500" />
+              Delete Video
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the video
+              and remove the data from our servers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmVideoDelete}
+              className="bg-red-500 hover:bg-red-600 text-white"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
