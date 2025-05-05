@@ -719,6 +719,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Don't fail the whole request if related videos fail
       }
       
+      // Get site settings for intro video
+      let introVideo = null;
+      try {
+        const settings = await storage.getSiteSettings();
+        if (settings && settings.introVideoEnabled && settings.introVideoUrl) {
+          introVideo = {
+            enabled: settings.introVideoEnabled,
+            url: settings.introVideoUrl,
+            duration: settings.introVideoDuration || 0
+          };
+        }
+      } catch (settingsError) {
+        console.error('Error getting site settings for intro video:', settingsError);
+        // Don't fail the whole request if we can't get intro video settings
+      }
+
       res.json({
         ...video,
         videoUrl,
@@ -730,7 +746,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           profileImage: creator.profileImage,
           subscriberCount: creator.subscriberCount
         } : null,
-        relatedVideos: relatedVideos.slice(0, 8) // Limit to 8 related videos
+        relatedVideos: relatedVideos.slice(0, 8), // Limit to 8 related videos
+        introVideo // Add intro video data
       });
     } catch (error) {
       console.error('Get video error:', error);

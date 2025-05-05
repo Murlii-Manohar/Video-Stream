@@ -19,14 +19,20 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
+interface IntroVideo {
+  enabled: boolean;
+  url: string | null;
+  duration: number;
+}
+
 interface VideoWithCreator {
   id: number;
   title: string;
   description?: string;
   filePath: string;
   thumbnailPath?: string;
-  videoUrl?: string; // Add videoUrl property
-  thumbnailUrl?: string; // Add thumbnailUrl property
+  videoUrl?: string;
+  thumbnailUrl?: string;
   views: number;
   likes: number;
   dislikes: number;
@@ -43,6 +49,7 @@ interface VideoWithCreator {
   userLiked?: boolean;
   userDisliked?: boolean;
   isUserSubscribed?: boolean;
+  introVideo?: IntroVideo; // Add intro video property
   creator: {
     id: number;
     username: string;
@@ -151,7 +158,8 @@ export default function Watch() {
         <div className="max-w-5xl mx-auto aspect-video">
           <VideoPlayer 
             src={video.videoUrl || video.filePath} 
-            poster={video.thumbnailUrl || video.thumbnailPath} 
+            poster={video.thumbnailUrl || video.thumbnailPath}
+            introVideo={video.introVideo}
           />
         </div>
       </div>
