@@ -26,6 +26,7 @@ import Terms from "@/pages/Terms";
 import Privacy from "@/pages/Privacy";
 import ContentPolicy from "@/pages/ContentPolicy";
 import Contact from "@/pages/Contact";
+import KidsZone from "@/pages/KidsZone";
 import ProfilePage from "@/pages/ProfilePage";
 import MyChannelsPage from "@/pages/MyChannelsPage";
 import DashboardPage from "@/pages/DashboardPage";
@@ -99,6 +100,7 @@ function Router() {
               <Route path="/privacy" component={Privacy} />
               <Route path="/content-policy" component={ContentPolicy} />
               <Route path="/contact" component={Contact} />
+              <Route path="/kids-zone" component={KidsZone} />
               
               {/* Fallback to 404 */}
               <Route component={NotFound} />

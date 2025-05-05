@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
 export function AgeVerification() {
   const [open, setOpen] = useState(false);
+  const [_, navigate] = useLocation();
 
   useEffect(() => {
     // Check if user has already verified age
@@ -20,11 +22,9 @@ export function AgeVerification() {
   };
 
   const handleReject = () => {
-    // Close the current window
-    window.close();
-    
-    // If window.close() doesn't work (many browsers prevent it), redirect to about:blank
-    window.location.href = "about:blank";
+    // Redirect to KidsZone page
+    setOpen(false);
+    navigate("/kids-zone");
   };
 
   return (
@@ -79,7 +79,7 @@ export function AgeVerification() {
             className="border-red-500 text-red-500 hover:bg-red-50 py-3" 
             onClick={handleReject}
           >
-            I am under 18 - Exit
+            I am under 18
           </Button>
         </div>
       </DialogContent>
