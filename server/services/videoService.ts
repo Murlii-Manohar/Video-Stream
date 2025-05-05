@@ -158,15 +158,27 @@ export async function deleteVideo(videoId: number): Promise<boolean> {
       throw new Error(`Video not found: ${videoId}`);
     }
     
-    // Delete video file from S3
-    await deleteFileFromS3(video.filePath);
-    
-    // Delete thumbnail from S3 if exists
-    if (video.thumbnailPath) {
-      await deleteFileFromS3(video.thumbnailPath, true);
+    try {
+      // Try to delete video file from S3
+      await deleteFileFromS3(video.filePath);
+      
+      // Try to delete thumbnail from S3 if exists
+      if (video.thumbnailPath) {
+        await deleteFileFromS3(video.thumbnailPath, true);
+      }
+    } catch (s3Error: any) {
+      // Handle S3 access issues
+      if (s3Error.Code === 'AccessDenied' || (s3Error.$metadata && s3Error.$metadata.httpStatusCode === 403)) {
+        log(`S3 access denied when deleting files, continuing with database deletion: ${s3Error}`, 'videoService');
+      } else if (s3Error.Code === 'NoSuchKey' || s3Error.message?.includes('NoSuchKey')) {
+        log(`S3 key not found, continuing with database deletion: ${s3Error}`, 'videoService');
+      } else {
+        // For other errors, log but continue with deletion
+        log(`Error deleting files from S3: ${s3Error}, continuing with database deletion`, 'videoService');
+      }
     }
     
-    // Delete video record from database
+    // Delete video record from database regardless of S3 result
     const deleted = await storage.deleteVideo(videoId);
     
     log(`Video deleted successfully: ${videoId}`, 'videoService');
@@ -200,45 +212,73 @@ export async function updateVideo(
     
     let updatedData: Partial<Video> = { ...videoData };
     
-    // Handle new video file upload
-    if (newFilePath) {
-      // Delete old video file from S3
-      await deleteFileFromS3(video.filePath);
-      
-      // Upload new video file to S3
-      const originalFilename = path.basename(newFilePath);
-      const s3VideoKey = generateS3FileKey(video.userId, originalFilename);
-      
-      const videoStream = createReadStream(newFilePath);
-      await uploadFileToS3(
-        s3VideoKey, 
-        videoStream, 
-        videoData.isQuickie ? 'video/mp4' : 'video/mp4'
-      );
-      
-      updatedData.filePath = s3VideoKey;
-    }
-    
-    // Handle new thumbnail upload
-    if (newThumbnailPath) {
-      // Delete old thumbnail from S3 if exists
-      if (video.thumbnailPath) {
-        await deleteFileFromS3(video.thumbnailPath, true);
+    try {
+      // Handle new video file upload
+      if (newFilePath) {
+        try {
+          // Try to delete old video file from S3
+          await deleteFileFromS3(video.filePath);
+        } catch (deleteError) {
+          // Log but continue if delete fails
+          log(`Error deleting old video from S3: ${deleteError}`, 'videoService');
+        }
+        
+        // Upload new video file to S3
+        const originalFilename = path.basename(newFilePath);
+        const s3VideoKey = generateS3FileKey(video.userId, originalFilename);
+        
+        const videoStream = createReadStream(newFilePath);
+        await uploadFileToS3(
+          s3VideoKey, 
+          videoStream, 
+          videoData.isQuickie ? 'video/mp4' : 'video/mp4'
+        );
+        
+        updatedData.filePath = s3VideoKey;
       }
       
-      // Upload new thumbnail to S3
-      const originalThumbnailFilename = path.basename(newThumbnailPath);
-      const s3ThumbnailKey = generateS3FileKey(video.userId, originalThumbnailFilename, true);
-      
-      const thumbnailStream = createReadStream(newThumbnailPath);
-      await uploadFileToS3(
-        s3ThumbnailKey, 
-        thumbnailStream, 
-        'image/jpeg', 
-        true
-      );
-      
-      updatedData.thumbnailPath = s3ThumbnailKey;
+      // Handle new thumbnail upload
+      if (newThumbnailPath) {
+        try {
+          // Try to delete old thumbnail from S3 if exists
+          if (video.thumbnailPath) {
+            await deleteFileFromS3(video.thumbnailPath, true);
+          }
+        } catch (deleteError) {
+          // Log but continue if delete fails
+          log(`Error deleting old thumbnail from S3: ${deleteError}`, 'videoService');
+        }
+        
+        // Upload new thumbnail to S3
+        const originalThumbnailFilename = path.basename(newThumbnailPath);
+        const s3ThumbnailKey = generateS3FileKey(video.userId, originalThumbnailFilename, true);
+        
+        const thumbnailStream = createReadStream(newThumbnailPath);
+        await uploadFileToS3(
+          s3ThumbnailKey, 
+          thumbnailStream, 
+          'image/jpeg', 
+          true
+        );
+        
+        updatedData.thumbnailPath = s3ThumbnailKey;
+      }
+    } catch (s3Error: any) {
+      // Handle S3 access issues
+      if (s3Error.Code === 'AccessDenied' || (s3Error.$metadata && s3Error.$metadata.httpStatusCode === 403)) {
+        log(`S3 access denied, falling back to local file storage: ${s3Error}`, 'videoService');
+        
+        // Use the local file paths instead
+        if (newFilePath) {
+          updatedData.filePath = newFilePath;
+        }
+        if (newThumbnailPath) {
+          updatedData.thumbnailPath = newThumbnailPath;
+        }
+      } else {
+        // For other errors, re-throw
+        throw s3Error;
+      }
     }
     
     // Update video record in database
