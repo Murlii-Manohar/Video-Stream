@@ -167,6 +167,11 @@ export default function Watch() {
             src={video.videoUrl || video.filePath} 
             poster={video.thumbnailUrl || video.thumbnailPath}
             introVideo={video.introVideo}
+            adInfo={video.hasAds && video.adUrl ? {
+              url: video.adUrl,
+              startTime: video.adStartTime,
+              skippable: video.adSkippable ?? false // Default to false if not specified
+            } : undefined}
           />
         </div>
       </div>
