@@ -98,7 +98,7 @@ export function Header({ toggleSidebar }: HeaderProps) {
           </div>
           
           <Link href="/" className="flex items-center">
-            <span className="text-primary font-poppins text-2xl font-bold">XPlay<span className="text-secondary">HD</span></span>
+            <span className="text-primary font-poppins text-2xl font-bold">Porn<span className="text-secondary">Villa</span></span>
           </Link>
         </div>
         

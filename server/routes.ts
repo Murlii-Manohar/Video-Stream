@@ -85,7 +85,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     store: new SessionStore({
       checkPeriod: 86400000 // prune expired entries every 24h
     }),
-    secret: process.env.SESSION_SECRET || 'xplayhd-secret-key',
+    secret: process.env.SESSION_SECRET || 'pornvilla-secret-key',
     resave: false,
     saveUninitialized: false,
     cookie: { 

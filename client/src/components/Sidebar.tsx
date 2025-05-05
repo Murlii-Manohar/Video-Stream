@@ -207,7 +207,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
         
         <div className="pt-4 border-t border-border">
           <div className="text-sm text-muted-foreground space-y-2">
-            <p>© 2023 XPlayHD</p>
+            <p>© 2023 PornVilla</p>
             <div className="flex flex-wrap gap-x-2 gap-y-1">
               <div className="hover:underline cursor-pointer" onClick={() => navigate("/terms")}>Terms</div>
               <div className="hover:underline cursor-pointer" onClick={() => navigate("/privacy")}>Privacy</div>
