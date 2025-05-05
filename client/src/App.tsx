@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
+import { cn } from "@/lib/utils";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -49,41 +50,43 @@ function Router() {
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
   
   return (
-    <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
+    <div className="min-h-screen bg-background text-foreground transition-colors duration-300 overflow-x-hidden">
       <Header toggleSidebar={toggleSidebar} />
-      <div className="flex">
+      <div className="flex relative">
         <Sidebar isOpen={sidebarOpen} />
-        <main className="flex-1 ml-0 md:ml-64 transition-all duration-300" style={sidebarOpen ? {} : { marginLeft: 0 }}>
-          <Switch>
-            {/* Main navigation */}
-            <Route path="/" component={Home} />
-            <Route path="/watch/:id" component={Watch} />
-            <Route path="/quickies" component={Quickies} />
-            <Route path="/explore" component={Explore} />
-            <ProtectedRoute path="/history" component={History} />
-            
-            {/* User account routes */}
-            <ProtectedRoute path="/my-channel" component={MyChannel} />
-            <ProtectedRoute path="/profile" component={ProfilePage} />
-            <ProtectedRoute path="/my-channels" component={MyChannelsPage} />
-            <ProtectedRoute path="/dashboard" component={DashboardPage} />
-            <ProtectedRoute path="/settings" component={SettingsPage} />
-            <ProtectedRoute path="/liked" component={Liked} />
-            <ProtectedRoute path="/bookmarks" component={Bookmarks} />
-            <ProtectedRoute path="/upload" component={Upload} />
-            <ProtectedRoute path="/admin" component={AdminPanel} adminOnly={true} />
-            
-            {/* Category pages */}
-            <Route path="/category/:categorySlug" component={CategoryPage} />
-            
-            {/* Legal pages */}
-            <Route path="/terms" component={Terms} />
-            <Route path="/privacy" component={Privacy} />
-            <Route path="/content-policy" component={ContentPolicy} />
-            
-            {/* Fallback to 404 */}
-            <Route component={NotFound} />
-          </Switch>
+        <main className={`flex-1 w-full transition-all duration-300 min-h-[calc(100vh-64px)] ${sidebarOpen ? "ml-0 md:ml-64" : "ml-0"}`}>
+          <div className="p-2 sm:p-4 md:p-6">
+            <Switch>
+              {/* Main navigation */}
+              <Route path="/" component={Home} />
+              <Route path="/watch/:id" component={Watch} />
+              <Route path="/quickies" component={Quickies} />
+              <Route path="/explore" component={Explore} />
+              <ProtectedRoute path="/history" component={History} />
+              
+              {/* User account routes */}
+              <ProtectedRoute path="/my-channel" component={MyChannel} />
+              <ProtectedRoute path="/profile" component={ProfilePage} />
+              <ProtectedRoute path="/my-channels" component={MyChannelsPage} />
+              <ProtectedRoute path="/dashboard" component={DashboardPage} />
+              <ProtectedRoute path="/settings" component={SettingsPage} />
+              <ProtectedRoute path="/liked" component={Liked} />
+              <ProtectedRoute path="/bookmarks" component={Bookmarks} />
+              <ProtectedRoute path="/upload" component={Upload} />
+              <ProtectedRoute path="/admin" component={AdminPanel} adminOnly={true} />
+              
+              {/* Category pages */}
+              <Route path="/category/:categorySlug" component={CategoryPage} />
+              
+              {/* Legal pages */}
+              <Route path="/terms" component={Terms} />
+              <Route path="/privacy" component={Privacy} />
+              <Route path="/content-policy" component={ContentPolicy} />
+              
+              {/* Fallback to 404 */}
+              <Route component={NotFound} />
+            </Switch>
+          </div>
         </main>
       </div>
     </div>

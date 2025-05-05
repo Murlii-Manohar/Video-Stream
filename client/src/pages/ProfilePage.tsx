@@ -254,18 +254,18 @@ export default function ProfilePage() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="overflow-hidden">
                             <h3 className="font-medium text-sm text-muted-foreground mb-1">Username</h3>
-                            <p>{user.username}</p>
+                            <p className="truncate">{user.username}</p>
                           </div>
-                          <div>
+                          <div className="overflow-hidden">
                             <h3 className="font-medium text-sm text-muted-foreground mb-1">Display Name</h3>
-                            <p>{user.displayName || "-"}</p>
+                            <p className="truncate">{user.displayName || "-"}</p>
                           </div>
-                          <div>
+                          <div className="overflow-hidden">
                             <h3 className="font-medium text-sm text-muted-foreground mb-1">Email</h3>
-                            <p>{user.email}</p>
+                            <p className="truncate">{user.email}</p>
                           </div>
                           <div>
                             <h3 className="font-medium text-sm text-muted-foreground mb-1">Status</h3>
