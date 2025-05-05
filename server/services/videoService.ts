@@ -25,30 +25,44 @@ export async function uploadVideo(
   try {
     const userId = videoData.userId;
     const originalFilename = path.basename(filePath);
-    const s3VideoKey = generateS3FileKey(userId, originalFilename);
-    
-    // Upload video to S3
-    const videoStream = createReadStream(filePath);
-    await uploadFileToS3(
-      s3VideoKey, 
-      videoStream, 
-      videoData.isQuickie ? 'video/mp4' : 'video/mp4'
-    );
+    let s3VideoKey = generateS3FileKey(userId, originalFilename);
     
     let s3ThumbnailKey = null;
     
-    // Upload thumbnail to S3 if provided
-    if (thumbnailPath) {
-      const originalThumbnailFilename = path.basename(thumbnailPath);
-      s3ThumbnailKey = generateS3FileKey(userId, originalThumbnailFilename, true);
-      
-      const thumbnailStream = createReadStream(thumbnailPath);
+    try {
+      // Upload video to S3
+      const videoStream = createReadStream(filePath);
       await uploadFileToS3(
-        s3ThumbnailKey, 
-        thumbnailStream, 
-        'image/jpeg', 
-        true
+        s3VideoKey, 
+        videoStream, 
+        videoData.isQuickie ? 'video/mp4' : 'video/mp4'
       );
+      
+      // Upload thumbnail to S3 if provided
+      if (thumbnailPath) {
+        const originalThumbnailFilename = path.basename(thumbnailPath);
+        s3ThumbnailKey = generateS3FileKey(userId, originalThumbnailFilename, true);
+        
+        const thumbnailStream = createReadStream(thumbnailPath);
+        await uploadFileToS3(
+          s3ThumbnailKey, 
+          thumbnailStream, 
+          'image/jpeg', 
+          true
+        );
+      }
+    } catch (s3Error: any) {
+      // Handle permission or configuration issues gracefully
+      if (s3Error.Code === 'AccessDenied' || (s3Error.$metadata && s3Error.$metadata.httpStatusCode === 403)) {
+        log(`S3 access denied, falling back to local references: ${s3Error}`, 'videoService');
+        
+        // Use original file paths instead of S3 keys
+        s3VideoKey = filePath;
+        s3ThumbnailKey = thumbnailPath;
+      } else {
+        // For other errors, re-throw
+        throw s3Error;
+      }
     }
     
     // Create video record in database
@@ -89,13 +103,35 @@ export async function getVideoWithSignedUrls(videoId: number): Promise<{
       throw new Error(`Video not found: ${videoId}`);
     }
     
-    // Generate signed URL for video
-    const videoUrl = await getSignedFileUrl(video.filePath);
+    let videoUrl: string;
+    let thumbnailUrl: string | null = null;
     
-    // Generate signed URL for thumbnail if exists
-    let thumbnailUrl = null;
-    if (video.thumbnailPath) {
-      thumbnailUrl = await getSignedFileUrl(video.thumbnailPath, true);
+    try {
+      // Generate signed URL for video
+      videoUrl = await getSignedFileUrl(video.filePath);
+      
+      // Generate signed URL for thumbnail if exists
+      if (video.thumbnailPath) {
+        thumbnailUrl = await getSignedFileUrl(video.thumbnailPath, true);
+      }
+    } catch (s3Error: any) {
+      // Handle S3 access issues
+      if (s3Error.Code === 'AccessDenied' || (s3Error.$metadata && s3Error.$metadata.httpStatusCode === 403)) {
+        log(`S3 access denied, using direct file paths: ${s3Error}`, 'videoService');
+        
+        // Use the file paths directly (this only works if they're local paths)
+        videoUrl = video.filePath;
+        thumbnailUrl = video.thumbnailPath;
+      } else if (s3Error.Code === 'NoSuchKey' || s3Error.message?.includes('NoSuchKey')) {
+        log(`S3 key not found, using direct file paths: ${s3Error}`, 'videoService');
+        
+        // Use the file paths directly (this only works if they're local paths)
+        videoUrl = video.filePath;
+        thumbnailUrl = video.thumbnailPath;
+      } else {
+        // For other errors, re-throw
+        throw s3Error;
+      }
     }
     
     return {

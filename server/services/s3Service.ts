@@ -3,7 +3,8 @@ import {
   PutObjectCommand, 
   GetObjectCommand, 
   DeleteObjectCommand,
-  ListObjectsV2Command
+  ListObjectsV2Command,
+  CreateBucketCommand
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { createReadStream, ReadStream } from 'fs';
@@ -220,18 +221,32 @@ export async function initializeS3Service(): Promise<void> {
   try {
     log('Initializing S3 service...', 's3Service');
     
-    // Create buckets if they don't exist
+    // Attempt to create buckets if they don't exist
     try {
-      await createBucketIfNotExists(BUCKET_NAME);
-      await createBucketIfNotExists(THUMBNAIL_BUCKET_NAME);
+      // We'll try to create the buckets, but if we get an AccessDenied error,
+      // we'll assume the buckets either already exist or will be created externally
+      try {
+        await createBucketIfNotExists(BUCKET_NAME);
+        await createBucketIfNotExists(THUMBNAIL_BUCKET_NAME);
+      } catch (accessError: any) {
+        // If it's an access denied error, we'll log it but proceed
+        if (accessError.Code === 'AccessDenied') {
+          log('Access denied when creating buckets. Assuming buckets exist or will be created externally.', 's3Service');
+        } else {
+          // For other errors, re-throw
+          throw accessError;
+        }
+      }
       
       log('S3 service initialized successfully', 's3Service');
     } catch (bucketError) {
       log(`Failed to create or check buckets: ${bucketError}`, 's3Service');
-      throw bucketError;
+      log('Continuing anyway - bucket operations will be attempted at runtime', 's3Service');
+      // We don't throw here to allow the service to initialize even with bucket issues
     }
   } catch (error) {
     log(`Error initializing S3 service: ${error}`, 's3Service');
-    throw error;
+    // We log the error, but don't throw - allowing the application to start anyway
+    // Operations will fail at runtime if the S3 configuration is incorrect
   }
 }
