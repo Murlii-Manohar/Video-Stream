@@ -48,6 +48,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiRequest } from "@/lib/queryClient";
 import { AdminAdManagement } from "@/components/AdminAdManagement";
+import { AdminMassUpload } from "@/components/AdminMassUpload";
 import { 
   UserIcon, 
   VideoIcon, 
@@ -60,7 +61,8 @@ import {
   UserCheckIcon,
   Flag,
   Check as CheckIcon,
-  Loader2
+  Loader2,
+  PlusCircle
 } from "lucide-react";
 
 export default function AdminPanel() {
@@ -435,6 +437,15 @@ export default function AdminPanel() {
 
         {/* Videos Tab */}
         <TabsContent value="videos" className="space-y-4">
+          <div className="flex justify-end mb-4">
+            <div className="flex items-center space-x-2">
+              <Button variant="default" onClick={() => navigate('/upload')}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Video
+              </Button>
+              <AdminMassUpload />
+            </div>
+          </div>
+          
           {videosLoading ? (
             <div className="flex justify-center py-8">
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
