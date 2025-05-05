@@ -577,10 +577,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/videos/:id', async (req, res) => {
     try {
       const videoId = parseInt(req.params.id);
+      let video;
+      let videoUrl = '';
+      let thumbnailUrl = '';
+      let relatedVideos = [];
       
       try {
         // Use our S3 service to get video with signed URLs
-        const { video, videoUrl, thumbnailUrl } = await getVideoWithSignedUrls(videoId);
+        const result = await getVideoWithSignedUrls(videoId);
+        video = result.video;
+        videoUrl = result.videoUrl;
+        thumbnailUrl = result.thumbnailUrl;
         
         if (!video) {
           return res.status(404).json({ message: 'Video not found' });
@@ -596,27 +603,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             videoId
           });
         }
-        
-        // Get creator info
-        const creator = await storage.getUser(video.userId);
-        
-        res.json({
-          ...video,
-          videoUrl,
-          thumbnailUrl,
-          creator: creator ? {
-            id: creator.id,
-            username: creator.username,
-            displayName: creator.displayName,
-            profileImage: creator.profileImage,
-            subscriberCount: creator.subscriberCount
-          } : null
-        });
       } catch (s3Error) {
         console.error('S3 error:', s3Error);
         
         // Fallback to regular storage if S3 fails (temporary during migration)
-        const video = await storage.getVideo(videoId);
+        video = await storage.getVideo(videoId);
         
         if (!video) {
           return res.status(404).json({ message: 'Video not found' });
@@ -624,21 +615,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Increment view count
         await storage.incrementVideoViews(videoId);
-        
-        // Get creator info
-        const creator = await storage.getUser(video.userId);
-        
-        res.json({
-          ...video,
-          creator: creator ? {
-            id: creator.id,
-            username: creator.username,
-            displayName: creator.displayName,
-            profileImage: creator.profileImage,
-            subscriberCount: creator.subscriberCount
-          } : null
-        });
       }
+      
+      // Get creator info
+      const creator = await storage.getUser(video.userId);
+      
+      // Get related videos based on content tagging
+      try {
+        // Fetch recent videos (limit to 50 for performance)
+        const allVideos = await storage.getVideos(50, 0);
+        
+        // Get related video IDs based on tags and categories
+        const relatedVideoIds = suggestRelatedContentIds(
+          videoId,
+          video.tags || [],
+          video.categories || [],
+          allVideos.map(v => ({
+            id: v.id,
+            tags: v.tags || [],
+            categories: v.categories || []
+          }))
+        );
+        
+        // Fetch related videos data
+        if (relatedVideoIds.length > 0) {
+          relatedVideos = await Promise.all(
+            relatedVideoIds.map(async (id) => {
+              try {
+                const result = await getVideoWithSignedUrls(id);
+                return {
+                  ...result.video,
+                  videoUrl: result.videoUrl,
+                  thumbnailUrl: result.thumbnailUrl
+                };
+              } catch (error) {
+                const video = await storage.getVideo(id);
+                return video;
+              }
+            })
+          );
+          
+          // Filter out any null results
+          relatedVideos = relatedVideos.filter(Boolean);
+          
+          // Add creator info to each related video
+          relatedVideos = await Promise.all(
+            relatedVideos.map(async (relatedVideo) => {
+              const videoCreator = await storage.getUser(relatedVideo.userId);
+              return {
+                ...relatedVideo,
+                creator: videoCreator ? {
+                  id: videoCreator.id,
+                  username: videoCreator.username,
+                  displayName: videoCreator.displayName,
+                  profileImage: videoCreator.profileImage
+                } : null
+              };
+            })
+          );
+        }
+      } catch (error) {
+        console.error('Error getting related videos:', error);
+        // Don't fail the whole request if related videos fail
+      }
+      
+      res.json({
+        ...video,
+        videoUrl,
+        thumbnailUrl,
+        creator: creator ? {
+          id: creator.id,
+          username: creator.username,
+          displayName: creator.displayName,
+          profileImage: creator.profileImage,
+          subscriberCount: creator.subscriberCount
+        } : null,
+        relatedVideos: relatedVideos.slice(0, 8) // Limit to 8 related videos
+      });
     } catch (error) {
       console.error('Get video error:', error);
       res.status(500).json({ message: 'Server error' });
@@ -1281,6 +1334,142 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(historyWithInfo);
     } catch (error) {
       console.error('Get history error:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
+
+  // Gamified content discovery - personalized recommendations
+  app.get('/api/discover', requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId as number;
+      
+      // Get user's watch history
+      const history = await storage.getVideoHistoryByUser(userId);
+      
+      // Get user's liked videos
+      const likes = await storage.getLikedVideosByUser(userId);
+      
+      // Get recent videos (limit to 50 for performance)
+      const recentVideos = await storage.getRecentVideos(50);
+      
+      // Extract tags and categories from user history and likes
+      const userInterests = {
+        tags: new Set<string>(),
+        categories: new Set<string>()
+      };
+      
+      // Process history
+      await Promise.all(history.map(async (item) => {
+        const video = await storage.getVideo(item.videoId);
+        if (video && video.tags) {
+          video.tags.forEach(tag => userInterests.tags.add(tag));
+        }
+        if (video && video.categories) {
+          video.categories.forEach(category => userInterests.categories.add(category));
+        }
+      }));
+      
+      // Process likes (these have higher weight)
+      await Promise.all(likes.map(async (item) => {
+        const video = await storage.getVideo(item.videoId);
+        if (video && video.tags) {
+          video.tags.forEach(tag => userInterests.tags.add(tag));
+        }
+        if (video && video.categories) {
+          video.categories.forEach(category => userInterests.categories.add(category));
+        }
+      }));
+      
+      // Compute scores for each video in the system
+      const scoredVideos = recentVideos.map(video => {
+        // Don't recommend videos the user has already watched
+        if (history.some(h => h.videoId === video.id)) {
+          return { video, score: -1 }; // Negative score for already watched
+        }
+        
+        let score = 0;
+        
+        // Score based on tags
+        if (video.tags) {
+          video.tags.forEach(tag => {
+            if (userInterests.tags.has(tag)) {
+              score += 1;
+            }
+          });
+        }
+        
+        // Score based on categories (higher weight)
+        if (video.categories) {
+          video.categories.forEach(category => {
+            if (userInterests.categories.has(category)) {
+              score += 2;
+            }
+          });
+        }
+        
+        // Boost score for newer videos
+        if (video.createdAt) {
+          const ageInDays = (Date.now() - new Date(video.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+          if (ageInDays < 7) {
+            score += 3; // Big boost for videos less than a week old
+          } else if (ageInDays < 30) {
+            score += 1; // Small boost for videos less than a month old
+          }
+        }
+        
+        // Boost score for trending videos (more views)
+        if (video.views && video.views > 100) {
+          score += 2;
+        }
+        
+        return { video, score };
+      });
+      
+      // Filter out already viewed and sort by score
+      const recommendations = scoredVideos
+        .filter(item => item.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 10) // Get top 10
+        .map(item => item.video);
+      
+      // Add creator info to each recommendation
+      const recommendationsWithInfo = await Promise.all(
+        recommendations.map(async (video) => {
+          try {
+            const result = await getVideoWithSignedUrls(video.id);
+            const creator = await storage.getUser(video.userId);
+            
+            return {
+              ...result.video,
+              videoUrl: result.videoUrl,
+              thumbnailUrl: result.thumbnailUrl,
+              score: scoredVideos.find(s => s.video.id === video.id)?.score || 0,
+              creator: creator ? {
+                id: creator.id,
+                username: creator.username,
+                displayName: creator.displayName,
+                profileImage: creator.profileImage
+              } : null
+            };
+          } catch (error) {
+            const creator = await storage.getUser(video.userId);
+            return {
+              ...video,
+              score: scoredVideos.find(s => s.video.id === video.id)?.score || 0,
+              creator: creator ? {
+                id: creator.id,
+                username: creator.username,
+                displayName: creator.displayName,
+                profileImage: creator.profileImage
+              } : null
+            };
+          }
+        })
+      );
+      
+      res.json(recommendationsWithInfo);
+    } catch (error) {
+      console.error('Get personalized recommendations error:', error);
       res.status(500).json({ message: 'Server error' });
     }
   });
