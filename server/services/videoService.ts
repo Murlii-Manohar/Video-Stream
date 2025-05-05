@@ -52,9 +52,13 @@ export async function uploadVideo(
         );
       }
     } catch (s3Error: any) {
-      // Handle permission or configuration issues gracefully
-      if (s3Error.Code === 'AccessDenied' || (s3Error.$metadata && s3Error.$metadata.httpStatusCode === 403)) {
-        log(`S3 access denied, falling back to local references: ${s3Error}`, 'videoService');
+      // Handle various S3 errors gracefully
+      if (
+        s3Error.Code === 'AccessDenied' || 
+        (s3Error.$metadata && s3Error.$metadata.httpStatusCode === 403) ||
+        s3Error.Code === 'NoSuchBucket'
+      ) {
+        log(`S3 error (${s3Error.Code}), falling back to local references: ${s3Error}`, 'videoService');
         
         // Use original file paths instead of S3 keys
         s3VideoKey = filePath;

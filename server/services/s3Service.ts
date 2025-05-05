@@ -50,10 +50,40 @@ export async function uploadFileToS3(
       ContentType: mimetype,
     };
 
-    const command = new PutObjectCommand(uploadParams);
-    await s3Client.send(command);
-    
-    log(`Successfully uploaded file to S3: ${fileKey}`, 's3Service');
+    try {
+      const command = new PutObjectCommand(uploadParams);
+      await s3Client.send(command);
+      log(`Successfully uploaded file to S3: ${fileKey}`, 's3Service');
+    } catch (uploadError: any) {
+      // If bucket doesn't exist, try to create it first and then upload
+      if (uploadError.Code === 'NoSuchBucket') {
+        log(`Bucket ${bucketName} does not exist. Attempting to create it...`, 's3Service');
+        
+        try {
+          // Try to create the bucket
+          await createBucketIfNotExists(bucketName);
+          
+          // Reopen the file stream which might have been consumed
+          fileStream.close();
+          const newFileStream = createReadStream(fileStream.path);
+          
+          // Retry the upload
+          const retryCommand = new PutObjectCommand({
+            ...uploadParams,
+            Body: newFileStream,
+          });
+          await s3Client.send(retryCommand);
+          log(`Successfully uploaded file to S3 after creating bucket: ${fileKey}`, 's3Service');
+        } catch (bucketCreateError: any) {
+          // If we can't create the bucket (likely due to permissions), log and re-throw
+          log(`Failed to create bucket ${bucketName}: ${bucketCreateError}`, 's3Service');
+          throw bucketCreateError;
+        }
+      } else {
+        // For other errors, re-throw
+        throw uploadError;
+      }
+    }
   } catch (error) {
     log(`Error uploading file to S3: ${error}`, 's3Service');
     throw error;
@@ -73,16 +103,32 @@ export async function getSignedFileUrl(
   const bucketName = isThumbnail ? THUMBNAIL_BUCKET_NAME : BUCKET_NAME;
   
   try {
-    const command = new GetObjectCommand({
-      Bucket: bucketName,
-      Key: fileKey,
-    });
-
-    const signedUrl = await getSignedUrl(s3Client, command, {
-      expiresIn: URL_EXPIRY,
-    });
+    // Check if the key could be a local file path
+    if (fileKey.startsWith('/') || fileKey.includes('./') || fileKey.includes('../')) {
+      log(`Key appears to be a local file path: ${fileKey}, returning as-is`, 's3Service');
+      return fileKey;
+    }
     
-    return signedUrl;
+    try {
+      const command = new GetObjectCommand({
+        Bucket: bucketName,
+        Key: fileKey,
+      });
+
+      const signedUrl = await getSignedUrl(s3Client, command, {
+        expiresIn: URL_EXPIRY,
+      });
+      
+      return signedUrl;
+    } catch (s3Error: any) {
+      // Handle S3 access issues
+      if (s3Error.Code === 'NoSuchBucket' || s3Error.Code === 'NoSuchKey') {
+        log(`S3 error (${s3Error.Code}) when generating signed URL: ${s3Error}`, 's3Service');
+        // Return the original key as a fallback
+        return fileKey;
+      }
+      throw s3Error;
+    }
   } catch (error) {
     log(`Error generating signed URL for file: ${error}`, 's3Service');
     throw error;
@@ -102,15 +148,31 @@ export async function deleteFileFromS3(
   const bucketName = isThumbnail ? THUMBNAIL_BUCKET_NAME : BUCKET_NAME;
   
   try {
+    // Check if the key is a local file path
+    if (fileKey.startsWith('/') || fileKey.includes('./') || fileKey.includes('../')) {
+      log(`Key appears to be a local file path: ${fileKey}, skipping S3 deletion`, 's3Service');
+      return;
+    }
+    
     const deleteParams = {
       Bucket: bucketName,
       Key: fileKey,
     };
 
-    const command = new DeleteObjectCommand(deleteParams);
-    await s3Client.send(command);
-    
-    log(`Successfully deleted file from S3: ${fileKey}`, 's3Service');
+    try {
+      const command = new DeleteObjectCommand(deleteParams);
+      await s3Client.send(command);
+      
+      log(`Successfully deleted file from S3: ${fileKey}`, 's3Service');
+    } catch (s3Error: any) {
+      // Handle NoSuchBucket or NoSuchKey errors
+      if (s3Error.Code === 'NoSuchBucket' || s3Error.Code === 'NoSuchKey') {
+        log(`S3 error (${s3Error.Code}) when deleting file: ${s3Error}`, 's3Service');
+        // No need to throw an error here, just log it and continue
+        return;
+      }
+      throw s3Error;
+    }
   } catch (error) {
     log(`Error deleting file from S3: ${error}`, 's3Service');
     throw error;
@@ -135,19 +197,28 @@ export async function listFilesInS3(
       Prefix: prefix,
     };
 
-    const command = new ListObjectsV2Command(listParams);
-    const response = await s3Client.send(command);
-    
-    const fileKeys: string[] = [];
-    if (response.Contents) {
-      for (const object of response.Contents) {
-        if (object.Key) {
-          fileKeys.push(object.Key);
+    try {
+      const command = new ListObjectsV2Command(listParams);
+      const response = await s3Client.send(command);
+      
+      const fileKeys: string[] = [];
+      if (response.Contents) {
+        for (const object of response.Contents) {
+          if (object.Key) {
+            fileKeys.push(object.Key);
+          }
         }
       }
+      
+      return fileKeys;
+    } catch (s3Error: any) {
+      // Handle NoSuchBucket errors
+      if (s3Error.Code === 'NoSuchBucket') {
+        log(`Bucket ${bucketName} does not exist, returning empty list: ${s3Error}`, 's3Service');
+        return [];
+      }
+      throw s3Error;
     }
-    
-    return fileKeys;
   } catch (error) {
     log(`Error listing files in S3: ${error}`, 's3Service');
     throw error;
