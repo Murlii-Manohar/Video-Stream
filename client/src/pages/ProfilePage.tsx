@@ -137,60 +137,28 @@ export default function ProfilePage() {
                 <h2 className="text-xl font-semibold mb-1">{user.displayName || user.username}</h2>
                 <p className="text-muted-foreground text-sm mb-4">@{user.username}</p>
                 
-                {!isEditing ? (
-                  <Button 
-                    variant="outline" 
-                    className="w-full"
-                    onClick={() => setIsEditing(true)}
-                  >
-                    <PencilIcon className="h-4 w-4 mr-2" />
-                    Edit Profile
-                  </Button>
-                ) : (
-                  <div className="flex gap-2 w-full">
-                    <Button 
-                      variant="outline" 
-                      className="flex-1"
-                      onClick={() => {
-                        setIsEditing(false);
-                        // Reset form
-                        setUsername(user.username || "");
-                        setDisplayName(user.displayName || "");
-                        setBio(user.bio || "");
-                        setProfileImage(null);
-                        setImagePreview(user.profileImage || "");
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                    <Button 
-                      className="flex-1"
-                      onClick={handleProfileUpdate}
-                      disabled={updateProfileMutation.isPending}
-                    >
-                      {updateProfileMutation.isPending ? (
-                        <LoaderIcon className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <PencilIcon className="h-4 w-4 mr-2" />
-                      )}
-                      Save
-                    </Button>
-                  </div>
-                )}
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => setIsEditing(!isEditing)}
+                >
+                  <PencilIcon className="h-4 w-4 mr-2" />
+                  {isEditing ? 'Cancel Edit' : 'Edit Profile'}
+                </Button>
               </div>
               
               <Separator className="my-4" />
               
               <div className="space-y-1">
-                <div>
+                <div className="break-words">
                   <span className="text-muted-foreground text-sm">Email</span>
-                  <p>{user.email}</p>
+                  <p className="overflow-hidden text-ellipsis">{user.email}</p>
                 </div>
                 
                 {user.bio && !isEditing && (
                   <div className="mt-4">
                     <span className="text-muted-foreground text-sm">Bio</span>
-                    <p className="whitespace-pre-wrap">{user.bio}</p>
+                    <p className="whitespace-pre-wrap break-words">{user.bio}</p>
                   </div>
                 )}
               </div>
@@ -215,7 +183,7 @@ export default function ProfilePage() {
                     <CardDescription>Update your profile information</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <form className="space-y-4">
+                    <form className="space-y-4" onSubmit={handleProfileUpdate}>
                       <div className="space-y-2">
                         <Label htmlFor="username">Username</Label>
                         <Input 
@@ -245,6 +213,35 @@ export default function ProfilePage() {
                           placeholder="Tell us about yourself"
                           rows={4}
                         />
+                      </div>
+
+                      <div className="flex justify-end space-x-2 mt-4">
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          onClick={() => {
+                            setIsEditing(false);
+                            // Reset form
+                            setUsername(user.username || "");
+                            setDisplayName(user.displayName || "");
+                            setBio(user.bio || "");
+                            setProfileImage(null);
+                            setImagePreview(user.profileImage || "");
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button 
+                          type="submit"
+                          disabled={updateProfileMutation.isPending}
+                        >
+                          {updateProfileMutation.isPending ? (
+                            <LoaderIcon className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <PencilIcon className="h-4 w-4 mr-2" />
+                          )}
+                          Save
+                        </Button>
                       </div>
                     </form>
                   </CardContent>

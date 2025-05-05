@@ -326,6 +326,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User Profile Routes
+  app.patch('/api/users/profile', requireAuth, upload.single('profileImage'), async (req, res) => {
+    try {
+      const userId = req.session.userId as number;
+      const { username, displayName, bio } = req.body;
+      
+      // Check if username is already taken by another user
+      if (username) {
+        const existingUser = await storage.getUserByUsername(username);
+        if (existingUser && existingUser.id !== userId) {
+          return res.status(400).json({ message: 'Username already taken' });
+        }
+      }
+      
+      // Process profile image if uploaded
+      let profileImagePath = undefined;
+      if (req.file) {
+        profileImagePath = `/uploads/${req.file.filename}`;
+      }
+      
+      // Update user profile
+      const updatedUser = await storage.updateUser(userId, {
+        username,
+        displayName,
+        bio,
+        ...(profileImagePath && { profileImage: profileImagePath })
+      });
+      
+      if (!updatedUser) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
+      res.json(updatedUser);
+    } catch (error) {
+      console.error('Update profile error:', error);
+      res.status(500).json({ message: 'Failed to update profile' });
+    }
+  });
+
   // Email Verification Routes
   app.post('/api/auth/send-verification', handleValidation(sendVerificationSchema), async (req, res) => {
     try {
