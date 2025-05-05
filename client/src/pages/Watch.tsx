@@ -25,6 +25,8 @@ interface VideoWithCreator {
   description?: string;
   filePath: string;
   thumbnailPath?: string;
+  videoUrl?: string; // Add videoUrl property
+  thumbnailUrl?: string; // Add thumbnailUrl property
   views: number;
   likes: number;
   dislikes: number;
@@ -148,8 +150,8 @@ export default function Watch() {
       <div className="bg-black">
         <div className="max-w-5xl mx-auto aspect-video">
           <VideoPlayer 
-            src={video.filePath} 
-            poster={video.thumbnailPath} 
+            src={video.videoUrl || video.filePath} 
+            poster={video.thumbnailUrl || video.thumbnailPath} 
           />
         </div>
       </div>
