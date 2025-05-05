@@ -55,6 +55,9 @@ export const siteSettings = pgTable("site_settings", {
   siteAdsEnabled: boolean("site_ads_enabled").default(false),
   siteAdUrls: text("site_ad_urls").array(),
   siteAdPositions: text("site_ad_positions").array(),
+  introVideoEnabled: boolean("intro_video_enabled").default(false),
+  introVideoUrl: text("intro_video_url"),
+  introVideoDuration: integer("intro_video_duration"),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 

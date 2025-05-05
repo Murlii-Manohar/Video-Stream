@@ -20,7 +20,9 @@ import {
   UserIcon,
   LayoutDashboardIcon,
   LogOutIcon,
-  SettingsIcon
+  SettingsIcon,
+  ArrowLeftIcon,
+  ArrowRightIcon
 } from "lucide-react";
 import LoginForm from "./LoginForm";
 import UploadForm from "./UploadForm";
@@ -63,7 +65,7 @@ export function Header({ toggleSidebar }: HeaderProps) {
           <Button 
             variant="ghost" 
             size="icon" 
-            className="mr-4 rounded-full hover:bg-muted"
+            className="mr-2 rounded-full hover:bg-muted"
             onClick={() => {
               console.log('Menu button clicked');
               toggleSidebar();
@@ -72,6 +74,29 @@ export function Header({ toggleSidebar }: HeaderProps) {
           >
             <MenuIcon className="h-5 w-5" />
           </Button>
+          
+          {/* Navigation buttons */}
+          <div className="flex items-center mr-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full hover:bg-muted"
+              onClick={() => window.history.back()}
+              title="Go Back"
+            >
+              <ArrowLeftIcon className="h-5 w-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full hover:bg-muted"
+              onClick={() => window.history.forward()}
+              title="Go Forward"
+            >
+              <ArrowRightIcon className="h-5 w-5" />
+            </Button>
+          </div>
+          
           <Link href="/" className="flex items-center">
             <span className="text-primary font-poppins text-2xl font-bold">XPlay<span className="text-secondary">HD</span></span>
           </Link>

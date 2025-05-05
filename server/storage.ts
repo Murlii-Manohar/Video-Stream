@@ -110,6 +110,9 @@ export class MemStorage implements IStorage {
       siteAdsEnabled: false,
       siteAdUrls: [],
       siteAdPositions: [],
+      introVideoEnabled: false,
+      introVideoUrl: '',
+      introVideoDuration: 0,
       updatedAt: new Date()
     };
     
