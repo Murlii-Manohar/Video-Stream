@@ -1253,6 +1253,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Upload custom thumbnail for a video
+  app.post('/api/videos/:id/thumbnail', requireAuth, upload.single('thumbnailFile'), async (req, res) => {
+    try {
+      const videoId = parseInt(req.params.id);
+      const userId = req.session.userId as number;
+      
+      // Get video to check ownership
+      const video = await storage.getVideo(videoId);
+      
+      if (!video) {
+        return res.status(404).json({ message: 'Video not found' });
+      }
+      
+      if (video.userId !== userId) {
+        const user = await storage.getUser(userId);
+        if (!user?.isAdmin) {
+          return res.status(403).json({ message: 'You do not have permission to edit this video' });
+        }
+      }
+      
+      // Check if thumbnail file was uploaded
+      if (!req.file) {
+        return res.status(400).json({ message: 'No thumbnail file uploaded' });
+      }
+      
+      // Get the file
+      const thumbnailFile = req.file;
+      
+      // Use our specialized thumbnail update function
+      try {
+        const result = await updateVideoThumbnail(videoId, thumbnailFile.path);
+        
+        res.json({
+          success: true,
+          video: result.video,
+          thumbnailUrl: result.thumbnailUrl
+        });
+      } catch (error) {
+        console.error('Error updating video thumbnail:', error);
+        res.status(500).json({ message: 'Failed to update thumbnail' });
+      }
+    } catch (error) {
+      console.error('Upload thumbnail error:', error);
+      res.status(500).json({ message: 'Server error uploading thumbnail' });
+    }
+  });
+  
   // Delete video (users can only delete their own videos)
   app.delete('/api/videos/:id', requireAuth, async (req, res) => {
     try {

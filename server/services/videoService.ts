@@ -257,7 +257,7 @@ export async function updateVideo(
         await uploadFileToS3(
           s3VideoKey, 
           videoStream, 
-          videoData.isQuickie ? 'video/mp4' : 'video/mp4'
+          videoData.isQuickie || video.isQuickie ? 'video/mp4' : 'video/mp4'
         );
         
         updatedData.filePath = s3VideoKey;
@@ -314,6 +314,45 @@ export async function updateVideo(
     return updatedVideo;
   } catch (error) {
     log(`Error updating video: ${error}`, 'videoService');
+    throw error;
+  }
+}
+
+/**
+ * Uploads a custom thumbnail for an existing video
+ * @param videoId ID of the video
+ * @param thumbnailPath Path to the thumbnail file
+ * @returns The updated video with URLs
+ */
+export async function updateVideoThumbnail(
+  videoId: number,
+  thumbnailPath: string
+): Promise<{
+  video: Video;
+  thumbnailUrl: string | null;
+}> {
+  try {
+    // First update the video with the new thumbnail
+    const updatedVideo = await updateVideo(
+      videoId,
+      {}, // No other changes
+      undefined, // No new video file
+      thumbnailPath // Only updating thumbnail
+    );
+    
+    if (!updatedVideo) {
+      throw new Error(`Failed to update video thumbnail: ${videoId}`);
+    }
+    
+    // Get the video with signed URLs
+    const result = await getVideoWithSignedUrls(videoId);
+    
+    return {
+      video: result.video,
+      thumbnailUrl: result.thumbnailUrl
+    };
+  } catch (error) {
+    log(`Error updating video thumbnail: ${error}`, 'videoService');
     throw error;
   }
 }
