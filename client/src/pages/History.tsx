@@ -15,7 +15,7 @@ export default function History() {
   const [location, navigate] = useLocation();
   
   // Fetch watch history
-  const { data: history, isLoading } = useQuery({
+  const { data: history, isLoading, refetch } = useQuery({
     queryKey: user ? ['/api/users', user.id, 'history'] : null,
     queryFn: async () => {
       const res = await fetch(`/api/users/${user?.id}/history`);
@@ -25,7 +25,7 @@ export default function History() {
     enabled: !!user
   });
 
-  // Function to clear history (this would need to be implemented on the backend)
+  // Function to clear history
   const clearHistory = async () => {
     try {
       await apiRequest('DELETE', `/api/users/${user?.id}/history`);
@@ -34,7 +34,7 @@ export default function History() {
         description: "Your watch history has been cleared successfully",
       });
       // Refetch history data
-      window.location.reload();
+      refetch();
     } catch (error) {
       toast({
         title: "Error",

@@ -23,7 +23,14 @@ interface VideoProps {
   categories?: string[];
 }
 
-export function VideoCard({ id, title, thumbnailPath, views, duration, createdAt, creator, categories = [] }: VideoProps) {
+// This component accepts either a direct video object or destructured props
+export function VideoCard(props: VideoProps | { video: VideoProps }) {
+  // Check if props contains a video object or is already the video data
+  const isVideoObject = 'video' in props;
+  const videoData = isVideoObject ? props.video : props;
+  
+  // Destructure video data
+  const { id, title, thumbnailPath, views, duration, createdAt, creator, categories = [] } = videoData;
   // Format the duration as mm:ss or hh:mm:ss
   const formatDuration = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
