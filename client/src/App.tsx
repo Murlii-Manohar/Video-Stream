@@ -115,6 +115,7 @@ function App() {
         <AuthProvider>
           <TooltipProvider>
             <Toaster />
+            <AgeVerification />
             <Router />
           </TooltipProvider>
         </AuthProvider>
