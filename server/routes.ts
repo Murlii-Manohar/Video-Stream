@@ -21,6 +21,7 @@ import { initializeEmailService, sendVerificationEmail, verifyCode } from "./ser
 import { tagContent, suggestRelatedContentIds, extractKeywords } from "./services/contentTaggingService";
 import { uploadVideo, getVideoWithSignedUrls, deleteVideo, updateVideo, updateVideoThumbnail } from "./services/videoService";
 import { initializeS3Service } from "./services/s3Service";
+import { log } from "./vite";
 
 // Create a memory store for sessions
 const SessionStore = MemoryStore(session);
@@ -1679,6 +1680,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Admin create video error:', error);
       res.status(500).json({ message: 'Server error during video creation' });
+    }
+  });
+  
+  // Admin mass video import endpoint
+  app.post('/api/admin/videos/import', requireAdmin, async (req, res) => {
+    try {
+      const { source, count = 5, userId } = req.body;
+      
+      // Validate required fields
+      if (!source || !userId) {
+        return res.status(400).json({ 
+          message: 'Missing required fields', 
+          required: ['source', 'userId'] 
+        });
+      }
+      
+      // Validate that the provided user exists
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(400).json({ message: 'User not found' });
+      }
+      
+      // Import videos from the specified source
+      const { importVideosFromUrl } = await import('./services/videoImporterService');
+      const importedVideos = await importVideosFromUrl(source, count);
+      
+      if (importedVideos.length === 0) {
+        return res.status(404).json({ message: 'No videos found to import' });
+      }
+      
+      // Create videos in database
+      const createdVideos = [];
+      for (const importedVideo of importedVideos) {
+        const videoData = {
+          userId,
+          title: importedVideo.title,
+          description: importedVideo.description || null,
+          filePath: importedVideo.filePath,
+          thumbnailPath: importedVideo.thumbnailPath || null,
+          duration: importedVideo.duration || null,
+          categories: importedVideo.categories || [],
+          tags: importedVideo.tags || [],
+          isQuickie: importedVideo.isQuickie || false,
+          isPublished: true,
+          views: 0,
+          likes: 0,
+          dislikes: 0,
+          hasAds: false,
+          adUrl: null,
+          adStartTime: null
+        };
+        
+        const video = await storage.createVideo(videoData);
+        createdVideos.push(video);
+      }
+      
+      log(`Admin imported ${createdVideos.length} videos successfully from ${source}`, 'express');
+      res.status(201).json({ 
+        message: `Imported ${createdVideos.length} videos successfully`, 
+        videos: createdVideos 
+      });
+    } catch (error) {
+      log(`Admin video import error: ${error}`, 'express');
+      res.status(500).json({ message: 'Error importing videos', error: error.message });
     }
   });
 
