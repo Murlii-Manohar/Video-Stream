@@ -399,6 +399,34 @@ export class PostgresDBStorage implements IStorage {
     if (!this.initialized) await this.initialize();
     
     try {
+      // First, delete all video history entries that reference this video
+      try {
+        await this.db.delete(videoHistory)
+          .where(eq(videoHistory.videoId, id));
+      } catch (error) {
+        console.error(`Error deleting video history records for video ${id}:`, error);
+        // Continue with other deletions even if this fails
+      }
+      
+      // Delete any liked video records that reference this video
+      try {
+        await this.db.delete(likedVideos)
+          .where(eq(likedVideos.videoId, id));
+      } catch (error) {
+        console.error(`Error deleting liked video records for video ${id}:`, error);
+        // Continue with other deletions even if this fails
+      }
+      
+      // Delete comments that reference this video
+      try {
+        await this.db.delete(comments)
+          .where(eq(comments.videoId, id));
+      } catch (error) {
+        console.error(`Error deleting comments for video ${id}:`, error);
+        // Continue with other deletions even if this fails
+      }
+      
+      // Finally, delete the video itself
       const result = await this.db.delete(videos)
         .where(eq(videos.id, id))
         .returning({ id: videos.id });
