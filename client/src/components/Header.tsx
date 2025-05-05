@@ -15,7 +15,6 @@ import {
 import { 
   MenuIcon, 
   UploadIcon, 
-  BellIcon, 
   SearchIcon, 
   LogInIcon,
   UserIcon,
@@ -131,15 +130,6 @@ export function Header({ toggleSidebar }: HeaderProps) {
             </Button>
           ) : (
             <div className="flex items-center space-x-4">
-              <Button
-                variant="ghost" 
-                size="icon" 
-                className="relative p-2 rounded-full hover:bg-muted"
-              >
-                <BellIcon className="h-5 w-5" />
-                <span className="absolute top-0 right-0 w-4 h-4 bg-primary text-white text-xs flex items-center justify-center rounded-full">3</span>
-              </Button>
-              
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="rounded-full p-0" aria-label="User menu">
