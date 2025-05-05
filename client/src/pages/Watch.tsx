@@ -25,6 +25,12 @@ interface IntroVideo {
   duration: number;
 }
 
+interface AdInfo {
+  url: string;
+  startTime?: number;
+  skippable: boolean;
+}
+
 interface VideoWithCreator {
   id: number;
   title: string;
@@ -46,10 +52,11 @@ interface VideoWithCreator {
   hasAds: boolean;
   adUrl?: string;
   adStartTime?: number;
+  adSkippable?: boolean;
   userLiked?: boolean;
   userDisliked?: boolean;
   isUserSubscribed?: boolean;
-  introVideo?: IntroVideo; // Add intro video property
+  introVideo?: IntroVideo;
   creator: {
     id: number;
     username: string;
