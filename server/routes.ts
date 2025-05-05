@@ -18,6 +18,7 @@ import { ZodError, z } from "zod";
 import session from "express-session";
 import MemoryStore from "memorystore";
 import { initializeEmailService, sendVerificationEmail, verifyCode } from "./services/emailService";
+import { tagContent, suggestRelatedContentIds, extractKeywords } from "./services/contentTaggingService";
 import { uploadVideo, getVideoWithSignedUrls, deleteVideo, updateVideo } from "./services/videoService";
 import { initializeS3Service } from "./services/s3Service";
 
@@ -696,11 +697,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Validate with schema
         const validatedData = insertVideoSchema.parse(req.body);
         
-        // Set up data for S3 upload
+        // Use AI content tagging to enhance metadata
+        const { categories, tags: enhancedTags, contentType, durationCategory } = tagContent({
+          title: validatedData.title,
+          description: validatedData.description,
+          tags: validatedData.tags,
+          duration: validatedData.duration || parseInt(req.body.duration),
+          isQuickie: validatedData.isQuickie
+        });
+        
+        console.log('AI content tagging results:', { categories, enhancedTags, contentType, durationCategory });
+        
+        // Set up data for S3 upload with enhanced metadata
         const videoData = {
           ...validatedData,
           userId,
-          isPublished: true // Force all uploaded videos to be published
+          isPublished: true, // Force all uploaded videos to be published
+          categories: categories.length > 0 ? categories : validatedData.categories,
+          tags: enhancedTags.length > 0 ? enhancedTags : validatedData.tags,
+          isQuickie: contentType === 'quickie' ? true : validatedData.isQuickie
         };
         
         console.log('Uploading video to S3...');

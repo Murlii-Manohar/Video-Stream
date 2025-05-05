@@ -11,6 +11,7 @@
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.37.0",
     "@aws-sdk/client-dynamodb": "^3.799.0",
     "@aws-sdk/client-s3": "^3.802.0",
     "@aws-sdk/lib-dynamodb": "^3.799.0",
