@@ -121,40 +121,36 @@ export async function getVideoWithSignedUrls(videoId: number): Promise<{
                                 video.thumbnailPath.includes('../'));
     
     if (isLocalVideoPath) {
-      // For local file paths, use our media endpoint
-      const filename = path.basename(video.filePath);
-      videoUrl = `/media/videos/${filename}`;
-      log(`Using local media route for video: ${videoUrl}`, 'videoService');
+      // For local file paths, use our direct media endpoint with the full path
+      videoUrl = `/api/media/direct?path=${encodeURIComponent(video.filePath)}`;
+      log(`Using direct media route for video: ${videoUrl}`, 'videoService');
     } else {
       try {
         // Try to get signed URL from S3
         videoUrl = await getSignedFileUrl(video.filePath);
       } catch (s3Error: any) {
-        // Handle S3 errors by converting to local media route
-        log(`S3 error (${s3Error.Code}), using media route: ${s3Error}`, 'videoService');
-        const filename = path.basename(video.filePath);
-        videoUrl = `/media/videos/${filename}`;
+        // Handle S3 errors by converting to direct media route
+        log(`S3 error (${s3Error.Code}), using direct media route: ${s3Error}`, 'videoService');
+        videoUrl = `/api/media/direct?path=${encodeURIComponent(video.filePath)}`;
       }
     }
     
     // Handle thumbnail URL
     if (video.thumbnailPath) {
       if (isLocalThumbnailPath) {
-        // For local thumbnail paths, use our media endpoint
-        const filename = path.basename(video.thumbnailPath);
-        thumbnailUrl = `/media/thumbnails/${filename}`;
-        log(`Using local media route for thumbnail: ${thumbnailUrl}`, 'videoService');
+        // For local thumbnail paths, use our direct media endpoint
+        thumbnailUrl = `/api/media/direct?path=${encodeURIComponent(video.thumbnailPath)}`;
+        log(`Using direct media route for thumbnail: ${thumbnailUrl}`, 'videoService');
       } else {
         try {
           // Try to get signed URL from S3
           thumbnailUrl = await getSignedFileUrl(video.thumbnailPath, true);
         } catch (s3Error: any) {
-          // Handle S3 errors by converting to local media route
-          log(`S3 error (${s3Error.Code}), using media route for thumbnail: ${s3Error}`, 'videoService');
+          // Handle S3 errors by converting to direct media route for thumbnail
+          log(`S3 error (${s3Error.Code}), using direct media route for thumbnail: ${s3Error}`, 'videoService');
           
           if (video.thumbnailPath) {
-            const filename = path.basename(video.thumbnailPath);
-            thumbnailUrl = `/media/thumbnails/${filename}`;
+            thumbnailUrl = `/api/media/direct?path=${encodeURIComponent(video.thumbnailPath)}`;
           }
         }
       }

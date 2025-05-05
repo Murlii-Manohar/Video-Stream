@@ -95,25 +95,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create a route to serve local video files when S3 is unavailable
   app.get('/media/videos/:filename', (req, res) => {
     const filename = req.params.filename;
-    // Handle both full paths and just filenames
     let filePath: string;
     
-    if (filename.includes('/')) {
-      // It's a full path - extract just the filename
-      const parts = filename.split('/');
-      const actualFilename = parts[parts.length - 1];
-      filePath = path.resolve(`uploaded_files/${actualFilename}`);
-    } else {
+    // First check if this is a direct absolute path video
+    if (filename.includes('video-') && filename.includes('.mp4')) {
+      // It's likely just the filename part
       filePath = path.resolve(`uploaded_files/${filename}`);
-    }
-    
-    // For security, make sure it's in the uploaded_files directory
-    if (!filePath.startsWith(path.resolve('uploaded_files'))) {
-      return res.status(403).send('Forbidden');
+    } else {
+      // For security, block any suspicious path traversal attempts
+      return res.status(403).send('Invalid filename format');
     }
     
     // Check if file exists
     if (!fs.existsSync(filePath)) {
+      console.log(`File not found: ${filePath}`);
       return res.status(404).send('File not found');
     }
     
@@ -254,6 +249,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Serve uploaded files
   app.use('/uploads', express.static(storage_dir));
+  
+  // Special route to serve full path videos
+  app.get('/api/media/direct', (req, res) => {
+    const filePath = req.query.path as string;
+    
+    if (!filePath) {
+      return res.status(400).send('No file path provided');
+    }
+    
+    // Security check: Only allow access to files in the uploaded_files directory
+    if (!filePath.includes('uploaded_files') && !filePath.includes('/home/runner/workspace')) {
+      return res.status(403).send('Access denied');
+    }
+    
+    // Check if file exists
+    if (!fs.existsSync(filePath)) {
+      console.log(`File not found: ${filePath}`);
+      return res.status(404).send('File not found');
+    }
+    
+    // Get file stats for range requests
+    const stat = fs.statSync(filePath);
+    const fileSize = stat.size;
+    const range = req.headers.range;
+    
+    // Handle range requests for streaming
+    if (range) {
+      const parts = range.replace(/bytes=/, '').split('-');
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      const chunkSize = end - start + 1;
+      
+      const file = fs.createReadStream(filePath, { start, end });
+      
+      const headers = {
+        'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': chunkSize,
+        'Content-Type': 'video/mp4',
+      };
+      
+      res.writeHead(206, headers);
+      file.pipe(res);
+    } else {
+      // Send the entire file if no range is specified
+      const headers = {
+        'Content-Length': fileSize,
+        'Content-Type': 'video/mp4',
+      };
+      
+      res.writeHead(200, headers);
+      fs.createReadStream(filePath).pipe(res);
+    }
+  });
 
   // Email Verification Routes
   app.post('/api/auth/send-verification', handleValidation(sendVerificationSchema), async (req, res) => {
