@@ -8,7 +8,8 @@ import {
   MaximizeIcon,
   Volume1Icon,
   VolumeXIcon,
-  CheckIcon
+  CheckIcon,
+  SkipForwardIcon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -18,13 +19,20 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+interface IntroVideo {
+  enabled: boolean;
+  url: string | null;
+  duration: number;
+}
+
 interface VideoPlayerProps {
   src: string;
   poster?: string;
+  introVideo?: IntroVideo;
   onEnded?: () => void;
 }
 
-export function VideoPlayer({ src, poster, onEnded }: VideoPlayerProps) {
+export function VideoPlayer({ src, poster, introVideo, onEnded }: VideoPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(1);
   const [muted, setMuted] = useState(false);
@@ -35,10 +43,16 @@ export function VideoPlayer({ src, poster, onEnded }: VideoPlayerProps) {
   const [currentQuality, setCurrentQuality] = useState<string>("auto");
   const [settingsOpen, setSettingsOpen] = useState(false);
   
+  // Intro video states
+  const [isIntroPlaying, setIsIntroPlaying] = useState(false);
+  const [introEnded, setIntroEnded] = useState(false);
+  const [isSkippingIntro, setIsSkippingIntro] = useState(false);
+  
   // Available video quality options
   const qualityOptions = ["auto", "1080p", "720p", "480p", "360p"];
   
   const videoRef = useRef<HTMLVideoElement>(null);
+  const introVideoRef = useRef<HTMLVideoElement>(null);
   const playerRef = useRef<HTMLDivElement>(null);
   const hideControlsTimerRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -116,7 +130,85 @@ export function VideoPlayer({ src, poster, onEnded }: VideoPlayerProps) {
     }, 3000);
   };
   
-  // Update time and handle end
+  // Check for intro video on initial mount
+  useEffect(() => {
+    // Check if intro video is available and enabled
+    if (introVideo && introVideo.enabled && introVideo.url) {
+      setIsIntroPlaying(true);
+    }
+  }, [introVideo]);
+  
+  // Handle intro video playback and switching to main video
+  useEffect(() => {
+    const introVideoElement = introVideoRef.current;
+    const mainVideoElement = videoRef.current;
+    
+    if (!introVideoElement || !mainVideoElement) return;
+    
+    if (isIntroPlaying && introVideo && introVideo.url) {
+      // Setup intro video listeners
+      const handleIntroEnded = () => {
+        setIsIntroPlaying(false);
+        setIntroEnded(true);
+        
+        // Play the main video automatically
+        mainVideoElement.play()
+          .then(() => setIsPlaying(true))
+          .catch(err => console.error("Error playing main video:", err));
+      };
+      
+      const handleIntroError = (err: any) => {
+        console.error("Error playing intro video:", err);
+        setIsIntroPlaying(false);
+        setIntroEnded(true);
+      };
+      
+      // Setup intro video event listeners
+      introVideoElement.addEventListener('ended', handleIntroEnded);
+      introVideoElement.addEventListener('error', handleIntroError);
+      
+      // Try to play the intro video
+      introVideoElement.play()
+        .catch(err => {
+          console.error("Error auto-playing intro:", err);
+          setIsIntroPlaying(false);
+          setIntroEnded(true);
+        });
+      
+      return () => {
+        introVideoElement.removeEventListener('ended', handleIntroEnded);
+        introVideoElement.removeEventListener('error', handleIntroError);
+      };
+    }
+  }, [isIntroPlaying, introVideo]);
+  
+  // Skip intro handler
+  const handleSkipIntro = () => {
+    setIsSkippingIntro(true);
+    
+    // Pause the intro video
+    if (introVideoRef.current) {
+      introVideoRef.current.pause();
+    }
+    
+    // Set states to show main video
+    setIsIntroPlaying(false);
+    setIntroEnded(true);
+    
+    // Try to play the main video
+    if (videoRef.current) {
+      videoRef.current.play()
+        .then(() => setIsPlaying(true))
+        .catch(err => console.error("Error playing main video after skip:", err));
+    }
+    
+    // Reset skip state for animation purposes
+    setTimeout(() => {
+      setIsSkippingIntro(false);
+    }, 300);
+  };
+  
+  // Update time and handle end for main video
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -199,116 +291,150 @@ export function VideoPlayer({ src, poster, onEnded }: VideoPlayerProps) {
       onMouseMove={showControls}
       onMouseLeave={() => isPlaying && setIsControlsVisible(false)}
     >
-      <video
-        ref={videoRef}
-        className="w-full h-full"
-        poster={poster}
-        src={src}
-        onClick={togglePlay}
-      />
-      
-      {/* Big play button in the center when paused */}
-      {!isPlaying && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <button 
-            className="w-20 h-20 rounded-full bg-white bg-opacity-20 flex items-center justify-center"
-            onClick={togglePlay}
+      {/* Intro Video */}
+      {isIntroPlaying && introVideo?.url && (
+        <div className="absolute inset-0 z-20 bg-black">
+          <video
+            ref={introVideoRef}
+            className="w-full h-full"
+            src={introVideo.url}
+            muted={muted}
+            autoPlay
+          />
+          
+          {/* Skip intro button */}
+          <button
+            className={cn(
+              "absolute bottom-12 right-8 py-2 px-4 bg-primary text-white rounded-md flex items-center transition-opacity",
+              isSkippingIntro ? "opacity-0" : "opacity-100"
+            )}
+            onClick={handleSkipIntro}
           >
-            <PlayIcon className="h-12 w-12 text-white" />
+            <span className="mr-2">Skip Intro</span>
+            <SkipForwardIcon className="h-4 w-4" />
           </button>
         </div>
       )}
       
-      {/* Video controls */}
-      <div 
-        className={cn(
-          "video-controls absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black to-transparent transition-opacity",
-          isControlsVisible ? "opacity-100" : "opacity-0"
-        )}
-      >
-        {/* Progress bar */}
-        <div 
-          className="progress-bar mb-2 rounded-full overflow-hidden cursor-pointer"
-          onClick={handleProgressClick}
-        >
-          <div 
-            className="progress bg-primary"
-            style={{ width: `${(currentTime / duration) * 100}%` }}
-          ></div>
-        </div>
+      {/* Main Video */}
+      <div className={cn(
+        "absolute inset-0 transition-opacity duration-300",
+        isIntroPlaying ? "opacity-0" : "opacity-100"
+      )}>
+        <video
+          ref={videoRef}
+          className="w-full h-full"
+          poster={poster}
+          src={src}
+          onClick={togglePlay}
+          preload="auto"
+        />
         
-        {/* Control buttons */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+        {/* Big play button in the center when paused */}
+        {!isPlaying && !isIntroPlaying && (
+          <div className="absolute inset-0 flex items-center justify-center">
             <button 
-              className="text-white focus:outline-none"
+              className="w-20 h-20 rounded-full bg-white bg-opacity-20 flex items-center justify-center"
               onClick={togglePlay}
             >
-              {isPlaying ? <PauseIcon className="h-6 w-6" /> : <PlayIcon className="h-6 w-6" />}
+              <PlayIcon className="h-12 w-12 text-white" />
             </button>
-            
-            <div className="flex items-center">
-              <button 
-                className="text-white mr-2 focus:outline-none"
-                onClick={toggleMute}
-              >
-                <VolumeIconComponent />
-              </button>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.1"
-                value={muted ? 0 : volume}
-                onChange={handleVolumeChange}
-                className="w-16 md:w-24"
-              />
-            </div>
-            
-            <span className="text-white text-sm hidden sm:inline">
-              {formatTime(currentTime)} / {formatTime(duration)}
-            </span>
+          </div>
+        )}
+      </div>
+      
+      {/* Video controls - only shown for main video */}
+      {!isIntroPlaying && (
+        <div 
+          className={cn(
+            "video-controls absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black to-transparent transition-opacity",
+            isControlsVisible ? "opacity-100" : "opacity-0"
+          )}
+        >
+          {/* Progress bar */}
+          <div 
+            className="progress-bar mb-2 h-2 rounded-full overflow-hidden cursor-pointer bg-gray-700"
+            onClick={handleProgressClick}
+          >
+            <div 
+              className="progress h-full bg-primary"
+              style={{ width: `${(currentTime / duration) * 100}%` }}
+            ></div>
           </div>
           
-          <div className="flex items-center space-x-4">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+          {/* Control buttons */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <button 
+                className="text-white focus:outline-none"
+                onClick={togglePlay}
+              >
+                {isPlaying ? <PauseIcon className="h-6 w-6" /> : <PlayIcon className="h-6 w-6" />}
+              </button>
+              
+              <div className="flex items-center">
                 <button 
-                  className="text-white focus:outline-none"
-                  aria-label="Settings"
-                  onClick={() => setSettingsOpen(!settingsOpen)}
+                  className="text-white mr-2 focus:outline-none"
+                  onClick={toggleMute}
                 >
-                  <SettingsIcon className="h-5 w-5" />
+                  <VolumeIconComponent />
                 </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40 bg-black bg-opacity-90 border-gray-700">
-                <div className="px-2 py-1.5 text-sm font-medium text-white border-b border-gray-700">
-                  Video Quality
-                </div>
-                {qualityOptions.map((quality) => (
-                  <DropdownMenuItem 
-                    key={quality}
-                    className="flex justify-between items-center cursor-pointer text-white hover:bg-gray-800"
-                    onClick={() => handleQualityChange(quality)}
-                  >
-                    {quality}
-                    {currentQuality === quality && (
-                      <CheckIcon className="h-4 w-4 ml-2" />
-                    )}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  value={muted ? 0 : volume}
+                  onChange={handleVolumeChange}
+                  className="w-16 md:w-24"
+                />
+              </div>
+              
+              <span className="text-white text-sm hidden sm:inline">
+                {formatTime(currentTime)} / {formatTime(duration)}
+              </span>
+            </div>
             
-            <button 
-              className="text-white focus:outline-none"
-              onClick={toggleFullscreen}
-            >
-              <MaximizeIcon className="h-5 w-5" />
-            </button>
+            <div className="flex items-center space-x-4">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button 
+                    className="text-white focus:outline-none"
+                    aria-label="Settings"
+                    onClick={() => setSettingsOpen(!settingsOpen)}
+                  >
+                    <SettingsIcon className="h-5 w-5" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40 bg-black bg-opacity-90 border-gray-700">
+                  <div className="px-2 py-1.5 text-sm font-medium text-white border-b border-gray-700">
+                    Video Quality
+                  </div>
+                  {qualityOptions.map((quality) => (
+                    <DropdownMenuItem 
+                      key={quality}
+                      className="flex justify-between items-center cursor-pointer text-white hover:bg-gray-800"
+                      onClick={() => handleQualityChange(quality)}
+                    >
+                      {quality}
+                      {currentQuality === quality && (
+                        <CheckIcon className="h-4 w-4 ml-2" />
+                      )}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              
+              <button 
+                className="text-white focus:outline-none"
+                onClick={toggleFullscreen}
+              >
+                <MaximizeIcon className="h-5 w-5" />
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
