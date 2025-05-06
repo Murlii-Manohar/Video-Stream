@@ -9,8 +9,10 @@ import {
   Volume1Icon,
   VolumeXIcon,
   CheckIcon,
-  SkipForwardIcon
+  SkipForwardIcon,
+  ScissorsIcon
 } from "lucide-react";
+import ClipCreator from "./ClipCreator";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -34,12 +36,13 @@ interface AdInfo {
 interface VideoPlayerProps {
   src: string;
   poster?: string;
+  videoId?: number;
   introVideo?: IntroVideo;
   adInfo?: AdInfo;
   onEnded?: () => void;
 }
 
-export function VideoPlayer({ src, poster, introVideo, adInfo, onEnded }: VideoPlayerProps) {
+export function VideoPlayer({ src, poster, videoId, introVideo, adInfo, onEnded }: VideoPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(1);
   const [muted, setMuted] = useState(false);
@@ -49,6 +52,10 @@ export function VideoPlayer({ src, poster, introVideo, adInfo, onEnded }: VideoP
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [currentQuality, setCurrentQuality] = useState<string>("auto");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  
+  // Clip creator states
+  const [isClipCreatorOpen, setIsClipCreatorOpen] = useState(false);
+  const [currentVideoId, setCurrentVideoId] = useState<number | null>(videoId || null);
   
   // Intro video states
   const [isIntroPlaying, setIsIntroPlaying] = useState(false);
@@ -146,7 +153,7 @@ export function VideoPlayer({ src, poster, introVideo, adInfo, onEnded }: VideoP
     }, 3000);
   };
   
-  // Check for intro video and ad on initial mount
+  // Check for intro video and ad on initial mount and handle videoId
   useEffect(() => {
     // Check if intro video is available and enabled
     if (introVideo && introVideo.enabled && introVideo.url) {
@@ -158,7 +165,12 @@ export function VideoPlayer({ src, poster, introVideo, adInfo, onEnded }: VideoP
       setIsAdPlaying(true);
       setAdEnded(false);
     }
-  }, [introVideo, adInfo]);
+    
+    // Set current video ID from prop
+    if (videoId) {
+      setCurrentVideoId(videoId);
+    }
+  }, [introVideo, adInfo, videoId]);
   
   // Handle intro video playback and switching to main video
   useEffect(() => {
@@ -383,6 +395,18 @@ export function VideoPlayer({ src, poster, introVideo, adInfo, onEnded }: VideoP
       }
     }, 500);
   };
+  
+  // Handle opening the clip creator
+  const handleOpenClipCreator = () => {
+    // Pause the video when opening clip creator
+    if (videoRef.current && isPlaying) {
+      videoRef.current.pause();
+      setIsPlaying(false);
+    }
+    
+    // Open the clip creator
+    setIsClipCreatorOpen(true);
+  };
 
   // Handle volume icon based on state
   const VolumeIconComponent = () => {
@@ -543,6 +567,16 @@ export function VideoPlayer({ src, poster, introVideo, adInfo, onEnded }: VideoP
             </div>
             
             <div className="flex items-center space-x-4">
+              {currentVideoId && (
+                <button 
+                  className="text-white focus:outline-none"
+                  onClick={handleOpenClipCreator}
+                  title="Create clip"
+                >
+                  <ScissorsIcon className="h-5 w-5" />
+                </button>
+              )}
+              
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button 
@@ -581,6 +615,18 @@ export function VideoPlayer({ src, poster, introVideo, adInfo, onEnded }: VideoP
             </div>
           </div>
         </div>
+      )}
+
+      {/* Clip Creator Modal */}
+      {isClipCreatorOpen && currentVideoId && (
+        <ClipCreator
+          videoId={currentVideoId}
+          videoUrl={src}
+          currentTime={currentTime}
+          duration={duration}
+          isOpen={isClipCreatorOpen}
+          onClose={() => setIsClipCreatorOpen(false)}
+        />
       )}
     </div>
   );
