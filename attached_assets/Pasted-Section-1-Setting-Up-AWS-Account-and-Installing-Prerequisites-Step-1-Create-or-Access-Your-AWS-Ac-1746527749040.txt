@@ -1,0 +1,369 @@
+Section 1: Setting Up AWS Account and Installing Prerequisites
+Step 1: Create or Access Your AWS Account
+Go to aws.amazon.com
+Click "Create an AWS Account" or sign in if you already have one
+Follow the registration process, which requires:
+Email address
+Password
+Account name
+Credit card for billing (AWS has a free tier, but adult content typically exceeds it)
+Phone number for verification
+Identity verification
+Step 2: Install AWS CLI on Your Local Machine
+Download AWS CLI:
+
+Windows: Download the installer from AWS CLI website
+Mac: Run brew install awscli (if you have Homebrew) or download the installer
+Linux: Run sudo apt-get install awscli (Ubuntu/Debian) or equivalent
+Verify installation:
+
+aws --version
+Step 3: Configure AWS CLI with Your Credentials
+In AWS Console, go to "IAM" (Identity and Access Management)
+Click "Users" → "Add User"
+Create a user with programmatic access and AdministratorAccess (for simplicity)
+Save the Access Key ID and Secret Access Key shown on screen
+Run this command and enter your credentials when prompted:
+aws configure
+Section 2: Setting Up Basic Infrastructure
+Step 4: Create a VPC (Virtual Private Cloud)
+Go to AWS Console → Services → VPC
+Click "Create VPC"
+Select "VPC and more" to create a complete VPC environment
+Enter:
+Name tag: pornvilla-vpc
+IPv4 CIDR block: 10.0.0.0/16
+Number of Availability Zones: 2
+Number of public subnets: 2
+Number of private subnets: 2
+Click "Create VPC"
+Step 5: Create Security Groups
+Go to VPC Dashboard → Security Groups → Create Security Group
+
+For Web Server:
+
+Name: pornvilla-web-sg
+Description: "Web server security group"
+VPC: Select your pornvilla-vpc
+Add inbound rules:
+HTTP (Port 80) from anywhere
+HTTPS (Port 443) from anywhere
+SSH (Port 22) from your IP only
+For Database:
+
+Name: pornvilla-db-sg
+Description: "Database security group"
+VPC: Select your pornvilla-vpc
+Add inbound rule:
+PostgreSQL (Port 5432) from pornvilla-web-sg only
+Section 3: Creating Database
+Step 6: Set Up RDS (PostgreSQL)
+Go to AWS Console → Services → RDS
+Click "Create database"
+Select "Standard create"
+Choose "PostgreSQL"
+For "Templates" choose "Production"
+Configure settings:
+DB instance identifier: pornvilla-db
+Master username: Create a username (e.g., pornvilla_admin)
+Master password: Create a strong password (save this securely!)
+Under "Instance configuration":
+Select "db.t3.medium" for decent performance
+Under "Storage":
+Allocated storage: 100 GB (adjust as needed)
+Enable storage autoscaling
+Under "Connectivity":
+VPC: Select your pornvilla-vpc
+Security group: Select pornvilla-db-sg
+Under "Additional configuration":
+Initial database name: pornvilla
+Click "Create database"
+Step 7: Note Database Connection Info
+Go to RDS Dashboard → Databases → your database
+Note the "Endpoint" (will look like pornvilla-db.xxxxxx.region.rds.amazonaws.com)
+This will be your DATABASE_URL connection string:
+postgresql://pornvilla_admin:yourpassword@pornvilla-db.xxxxxx.region.rds.amazonaws.com:5432/pornvilla
+Section 4: Setting Up S3 for Video Storage
+Step 8: Create S3 Buckets
+Go to AWS Console → Services → S3
+
+Click "Create bucket"
+
+For video content:
+
+Bucket name: pornvilla-videos
+Region: Same as your other services
+Block all public access: Uncheck (we'll configure fine-grained access)
+Bucket Versioning: Enable
+Default encryption: Enable
+Click "Create bucket"
+
+Repeat to create pornvilla-thumbnails bucket with similar settings
+
+Step 9: Configure CORS on Video Bucket
+Go to the bucket → "Permissions" tab → "CORS configuration"
+Add the following configuration:
+[
+  {
+    "AllowedHeaders": ["*"],
+    "AllowedMethods": ["GET", "HEAD"],
+    "AllowedOrigins": ["*"],
+    "ExposeHeaders": ["ETag", "Content-Range", "Content-Length"]
+  }
+]
+Step 10: Create Bucket Policy for Video Serving
+Go to your video bucket → "Permissions" tab → "Bucket policy"
+Insert this policy (replace pornvilla-videos with your actual bucket name):
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "GetObjectPolicy",
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": ["s3:GetObject"],
+      "Resource": "arn:aws:s3:::pornvilla-videos/*"
+    }
+  ]
+}
+Section 5: Setting Up EC2 (Virtual Server)
+Step 11: Launch EC2 Instance
+Go to AWS Console → Services → EC2
+Click "Launch instance"
+Name your instance: pornvilla-server
+For "Application and OS Images":
+Select Amazon Linux 2023
+For "Instance type":
+Select t3.medium (2 vCPU, 4 GB RAM) or larger
+For "Key pair":
+Create a new key pair, name it pornvilla-key
+Download the .pem file to your computer
+For "Network settings":
+VPC: Select your pornvilla-vpc
+Subnet: Select a public subnet
+Auto-assign public IP: Enable
+Security group: Select pornvilla-web-sg
+For "Configure storage":
+Size: 30 GB gp3
+Click "Launch instance"
+Step 12: Connect to Your EC2 Instance
+Go to EC2 Dashboard → Instances
+
+Wait for your instance to be in "Running" state
+
+Select your instance and click "Connect"
+
+Follow the SSH instructions:
+
+For Windows:
+
+Use PuTTY or Windows Subsystem for Linux
+Convert your .pem file to .ppk if using PuTTY
+For Mac/Linux:
+
+chmod 400 pornvilla-key.pem
+ssh -i "pornvilla-key.pem" ec2-user@your-instance-public-dns
+Step 13: Install Required Software on EC2
+Update the system:
+
+sudo yum update -y
+Install Node.js:
+
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
+source ~/.bashrc
+nvm install 18
+Install Git:
+
+sudo yum install git -y
+Install PM2 (process manager):
+
+npm install -g pm2
+Install Nginx:
+
+sudo yum install nginx -y
+sudo systemctl enable nginx
+sudo systemctl start nginx
+Section 6: Deploy Your Application
+Step 14: Clone Your Code Repository
+On your EC2 instance:
+mkdir -p /home/ec2-user/pornvilla
+cd /home/ec2-user/pornvilla
+git clone https://github.com/Murlii-Manohar/Video-Stream.git .
+Step 15: Create Environment Variables
+Create a .env file:
+
+nano .env
+Add these environment variables:
+
+DATABASE_URL=postgresql://pornvilla_admin:yourpassword@pornvilla-db.xxxx.region.rds.amazonaws.com:5432/pornvilla
+NODE_ENV=production
+AWS_REGION=your-region
+AWS_ACCESS_KEY_ID=your-access-key
+AWS_SECRET_ACCESS_KEY=your-secret-key
+USE_DYNAMODB=true
+Save the file (Ctrl+X, then Y, then Enter)
+
+Step 16: Install Dependencies and Build the Application
+Install project dependencies:
+
+npm ci
+Build the application:
+
+npm run build
+Step 17: Set Up PM2 for Process Management
+Create a PM2 config file:
+
+nano ecosystem.config.js
+Add this configuration:
+
+module.exports = {
+  apps: [{
+    name: "pornvilla",
+    script: "tsx",
+    args: "server/index.ts",
+    env: {
+      NODE_ENV: "production"
+    },
+    max_memory_restart: "1G"
+  }]
+};
+Start your application with PM2:
+
+pm2 start ecosystem.config.js
+Set PM2 to start on server boot:
+
+pm2 startup
+pm2 save
+Step 18: Configure Nginx as Reverse Proxy
+Create Nginx configuration:
+
+sudo nano /etc/nginx/conf.d/pornvilla.conf
+Add this configuration:
+
+server {
+    listen 80;
+    server_name _;
+    client_max_body_size 500M;
+    location / {
+        proxy_pass http://localhost:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+Test and restart Nginx:
+
+sudo nginx -t
+sudo systemctl restart nginx
+Section 7: Domain and SSL Setup
+Step 19: Register a Domain Name (if you don't have one)
+Go to AWS Console → Services → Route 53
+Click "Register domain"
+Follow the steps to purchase a domain
+(Or use any domain registrar like Namecheap, GoDaddy, etc.)
+Step 20: Create DNS Records
+Go to Route 53 → Hosted zones
+Click on your domain name
+Click "Create record"
+Leave the name field empty (for root domain)
+Type: A - IPv4 address
+Value: Enter your EC2 instance's public IP
+Click "Create records"
+Step 21: Set Up SSL Certificate
+Install Certbot:
+
+sudo amazon-linux-extras install epel -y
+sudo yum install certbot python3-certbot-nginx -y
+Obtain SSL certificate:
+
+sudo certbot --nginx -d yourdomain.com
+Follow the prompts to complete the SSL setup
+
+Section 8: Database Migration and Final Setup
+Step 22: Run Database Migrations
+Navigate to your application directory:
+
+cd /home/ec2-user/pornvilla
+Run your database migration:
+
+npm run db:push
+Step 23: Set Up Monitoring and Logs
+Install CloudWatch agent for monitoring:
+
+sudo yum install amazon-cloudwatch-agent -y
+Configure CloudWatch agent:
+
+sudo amazon-cloudwatch-agent-config-wizard
+Follow the prompt to configure monitoring
+
+Section 9: Testing and Verification
+Step 24: Test Your Deployment
+Visit your domain in a browser: https://yourdomain.com
+Test basic functionality:
+User registration
+Video playback
+Upload functionality
+Payment processing (if applicable)
+Step 25: Set Up Regular Backups
+Create a backup script:
+
+mkdir -p /home/ec2-user/backups
+nano /home/ec2-user/backup.sh
+Add this script:
+
+#!/bin/bash
+BACKUP_DIR="/home/ec2-user/backups"
+DATE=$(date +%Y-%m-%d)
+# Backup Environment Variables
+cp /home/ec2-user/pornvilla/.env $BACKUP_DIR/env-$DATE.bak
+# Rotate backups (keep 7 days)
+find $BACKUP_DIR -name "*.bak" -mtime +7 -delete
+Make the script executable:
+
+chmod +x /home/ec2-user/backup.sh
+Set up a cron job:
+
+crontab -e
+Add this line to run daily at 2 AM:
+
+0 2 * * * /home/ec2-user/backup.sh
+Section 10: Scaling and Performance
+Step 26: Set Up CloudFront CDN for Video Distribution
+Go to AWS Console → Services → CloudFront
+
+Click "Create distribution"
+
+For "Origin domain" select your S3 bucket
+
+Configure default cache behavior:
+
+Viewer protocol policy: "Redirect HTTP to HTTPS"
+Allowed HTTP methods: "GET, HEAD, OPTIONS"
+Cache policy: "CachingOptimized"
+Click "Create distribution"
+
+Replace direct S3 URLs with CloudFront distribution URL in your application settings
+
+Step 27: Create an Auto Scaling Group (Optional)
+Create AMI from your instance:
+
+Go to EC2 → Instances
+Select your instance
+Actions → Image and templates → Create image
+Enter name: pornvilla-ami
+Click "Create image"
+Create launch template:
+
+Go to EC2 → Launch Templates → Create launch template
+Use the AMI you just created
+Instance type: t3.medium
+Security group: your web security group
+Create Auto Scaling group:
+
+Go to EC2 → Auto Scaling Groups → Create Auto Scaling group
+Use the launch template you created
+Configure min/max capacity (e.g., 1-3 instances)
