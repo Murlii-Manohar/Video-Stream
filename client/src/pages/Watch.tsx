@@ -5,6 +5,7 @@ import { VideoPlayer } from "@/components/VideoPlayer";
 import { CommentSection } from "@/components/CommentSection";
 import { VideoInteractions } from "@/components/VideoInteractions";
 import { SubscribeButton } from "@/components/SubscribeButton";
+import RecommendedVideos from "@/components/RecommendedVideos";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { apiRequest } from "@/lib/queryClient";
@@ -236,6 +237,13 @@ export default function Watch() {
             initialIsSubscribed={video.isUserSubscribed}
           />
         </div>
+        
+        {/* Similar Videos */}
+        <RecommendedVideos 
+          type="similar" 
+          videoId={video.id} 
+          limit={4} 
+        />
         
         {/* Comments section */}
         <CommentSection videoId={video.id} />

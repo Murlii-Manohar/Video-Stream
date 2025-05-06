@@ -1,10 +1,10 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import VideoCard from './VideoCard';
+import { VideoCard } from './VideoCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/context/AuthContext';
 
 interface RecommendedVideosProps {
   type: 'personalized' | 'similar' | 'category';
@@ -19,7 +19,8 @@ const RecommendedVideos: React.FC<RecommendedVideosProps> = ({
   category,
   limit = 8
 }) => {
-  const { isAuthenticated } = useAuth();
+  const { user } = useAuth();
+  const isAuthenticated = !!user;
   
   // Determine the API endpoint based on the type
   let queryKey = '';

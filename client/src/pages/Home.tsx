@@ -3,11 +3,14 @@ import { Link } from "wouter";
 import { VideoCard } from "@/components/VideoCard";
 import { QuickieCard } from "@/components/QuickieCard";
 import CategoryFilter from "@/components/CategoryFilter";
+import RecommendedVideos from "@/components/RecommendedVideos";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const { user } = useAuth();
   
   // Fetch featured/recent videos
   const { data: recentVideos, isLoading: isLoadingRecent } = useQuery({
@@ -150,6 +153,20 @@ export default function Home() {
               ))}
         </div>
       </section>
+
+      {/* Personalized Recommendations - Only shown to logged in users and when no category is selected */}
+      {user && !selectedCategory && (
+        <section className="mb-10">
+          <RecommendedVideos type="personalized" limit={8} />
+        </section>
+      )}
+
+      {/* Category Recommendations - Only shown when a category is selected */}
+      {selectedCategory && (
+        <section className="mb-10">
+          <RecommendedVideos type="category" category={selectedCategory} limit={8} />
+        </section>
+      )}
 
       {/* Trending Section */}
       <section className="mb-10">
