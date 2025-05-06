@@ -2159,6 +2159,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // API routes for video clip creation
+  app.post('/api/clips', requireAuth, async (req, res) => {
+    try {
+      const { videoId, title, description, startTime, endTime } = req.body;
+      
+      if (!videoId || !title || startTime === undefined || endTime === undefined) {
+        return res.status(400).json({ message: 'Missing required fields' });
+      }
+      
+      // Get the original video
+      const video = await storage.getVideo(videoId);
+      if (!video) {
+        return res.status(404).json({ message: 'Video not found' });
+      }
+
+      // In a production environment, this would:
+      // 1. Extract the clip from the video using FFmpeg
+      // 2. Save the clip to S3 or other storage
+      // 3. Create a record in the database
+      
+      console.log(`Creating clip from video ID ${videoId}: ${title}`);
+      console.log(`Clip time range: ${startTime}s to ${endTime}s`);
+      
+      // For demonstration, generate a clip URL based on the original video URL
+      // In a real implementation, this would be the URL to the new clip file
+      const originalVideoUrl = video.filePath;
+      const clipId = Date.now();
+      const clipUrl = `/uploads/${originalVideoUrl}?clip=true&id=${clipId}&start=${startTime}&end=${endTime}`;
+      
+      // Create clip record in database (not implemented in this example)
+      // Would typically store: clipId, videoId, userId, title, description, startTime, endTime, clipUrl
+      
+      // Return the clip URL to the client
+      res.status(200).json({ 
+        clipId,
+        videoId,
+        title,
+        description,
+        startTime,
+        endTime,
+        clipUrl,
+        message: 'Clip created successfully'
+      });
+    } catch (error) {
+      console.error('Error creating clip:', error);
+      res.status(500).json({ message: 'Failed to create clip' });
+    }
+  });
+  
+  // API route for recording clip shares
+  app.post('/api/clips/share', requireAuth, async (req, res) => {
+    try {
+      const { clipId, platform } = req.body;
+      
+      if (!clipId || !platform) {
+        return res.status(400).json({ message: 'Missing required fields' });
+      }
+      
+      // In a production environment, this would save the share action to the database
+      console.log(`Clip ${clipId} shared to ${platform}`);
+      
+      // Return success response
+      res.status(200).json({ 
+        message: 'Share recorded successfully',
+        platform,
+        clipId
+      });
+    } catch (error) {
+      console.error('Error recording share:', error);
+      res.status(500).json({ message: 'Failed to record share' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -63,6 +63,7 @@ const ClipCreator: React.FC<ClipCreatorProps> = ({
   const [isSharing, setIsSharing] = useState(false);
   const [clipCreated, setClipCreated] = useState(false);
   const [clipUrl, setClipUrl] = useState('');
+  const [clipId, setClipId] = useState<number | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [selectedPlatform, setSelectedPlatform] = useState<SocialPlatform | ''>('');
@@ -111,6 +112,26 @@ const ClipCreator: React.FC<ClipCreatorProps> = ({
       return;
     }
 
+    // Validate clip length
+    const clipDuration = endTime - startTime;
+    if (clipDuration < 1) {
+      toast({
+        title: "Clip too short",
+        description: "Clip must be at least 1 second long",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (clipDuration > 60) {
+      toast({
+        title: "Clip too long",
+        description: "Clip must be 60 seconds or shorter",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       setIsCreating(true);
       
@@ -123,18 +144,24 @@ const ClipCreator: React.FC<ClipCreatorProps> = ({
       });
       
       if (!response.ok) {
-        throw new Error('Failed to create clip');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to create clip');
       }
       
       const data = await response.json();
       setClipUrl(data.clipUrl);
+      setClipId(data.clipId);
       setClipCreated(true);
       
       toast({
         title: "Clip created!",
         description: "Your clip is ready to share",
       });
+      
+      // Log clip creation success
+      console.log("Clip created successfully:", data);
     } catch (error) {
+      console.error("Error creating clip:", error);
       toast({
         title: "Error creating clip",
         description: error instanceof Error ? error.message : "An unexpected error occurred",
@@ -188,7 +215,7 @@ const ClipCreator: React.FC<ClipCreatorProps> = ({
       
       // Log the share
       await apiRequest('POST', '/api/clips/share', {
-        clipId: videoId, // This should be the clip ID in a real implementation
+        clipId: clipId || videoId, // Use the clip ID if available
         platform
       });
       
@@ -240,6 +267,7 @@ const ClipCreator: React.FC<ClipCreatorProps> = ({
     setEndTime(defaultEndTime);
     setClipCreated(false);
     setClipUrl('');
+    setClipId(null);
   };
 
   const handleClose = () => {
