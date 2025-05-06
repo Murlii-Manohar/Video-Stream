@@ -28,6 +28,10 @@ import session from "express-session";
 import MemoryStore from "memorystore";
 // Already importing emailService on line 14
 import { tagContent, suggestRelatedContentIds, extractKeywords } from "./services/contentTaggingService";
+import { RecommendationService } from "./services/recommendationService";
+
+// Initialize recommendation service
+const recommendationService = new RecommendationService(storage);
 import { uploadVideo, getVideoWithSignedUrls, deleteVideo, updateVideo, updateVideoThumbnail } from "./services/videoService";
 import { initializeS3Service } from "./services/s3Service";
 import { log } from "./vite";
@@ -1507,99 +1511,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Gamified content discovery - personalized recommendations
-  app.get('/api/discover', requireAuth, async (req, res) => {
+  // Endpoint for category-based recommendations
+  app.get('/api/recommendations/category/:category', async (req, res) => {
     try {
-      const userId = req.session.userId as number;
+      const category = req.params.category;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
       
-      // Get user's watch history
-      const history = await storage.getVideoHistoryByUser(userId);
-      
-      // Get user's liked videos
-      const likes = await storage.getLikedVideosByUser(userId);
-      
-      // Get recent videos (limit to 50 for performance)
-      const recentVideos = await storage.getRecentVideos(50);
-      
-      // Extract tags and categories from user history and likes
-      const userInterests = {
-        tags: new Set<string>(),
-        categories: new Set<string>()
-      };
-      
-      // Process history
-      await Promise.all(history.map(async (item) => {
-        const video = await storage.getVideo(item.videoId);
-        if (video && video.tags) {
-          video.tags.forEach(tag => userInterests.tags.add(tag));
-        }
-        if (video && video.categories) {
-          video.categories.forEach(category => userInterests.categories.add(category));
-        }
-      }));
-      
-      // Process likes (these have higher weight)
-      await Promise.all(likes.map(async (item) => {
-        const video = await storage.getVideo(item.videoId);
-        if (video && video.tags) {
-          video.tags.forEach(tag => userInterests.tags.add(tag));
-        }
-        if (video && video.categories) {
-          video.categories.forEach(category => userInterests.categories.add(category));
-        }
-      }));
-      
-      // Compute scores for each video in the system
-      const scoredVideos = recentVideos.map(video => {
-        // Don't recommend videos the user has already watched
-        if (history.some(h => h.videoId === video.id)) {
-          return { video, score: -1 }; // Negative score for already watched
-        }
-        
-        let score = 0;
-        
-        // Score based on tags
-        if (video.tags) {
-          video.tags.forEach(tag => {
-            if (userInterests.tags.has(tag)) {
-              score += 1;
-            }
-          });
-        }
-        
-        // Score based on categories (higher weight)
-        if (video.categories) {
-          video.categories.forEach(category => {
-            if (userInterests.categories.has(category)) {
-              score += 2;
-            }
-          });
-        }
-        
-        // Boost score for newer videos
-        if (video.createdAt) {
-          const ageInDays = (Date.now() - new Date(video.createdAt).getTime()) / (1000 * 60 * 60 * 24);
-          if (ageInDays < 7) {
-            score += 3; // Big boost for videos less than a week old
-          } else if (ageInDays < 30) {
-            score += 1; // Small boost for videos less than a month old
-          }
-        }
-        
-        // Boost score for trending videos (more views)
-        if (video.views && video.views > 100) {
-          score += 2;
-        }
-        
-        return { video, score };
-      });
-      
-      // Filter out already viewed and sort by score
-      const recommendations = scoredVideos
-        .filter(item => item.score > 0)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 10) // Get top 10
-        .map(item => item.video);
+      // Get category recommendations
+      const recommendations = await recommendationService.getCategoryRecommendations(category, limit);
       
       // Add creator info to each recommendation
       const recommendationsWithInfo = await Promise.all(
@@ -1612,7 +1531,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ...result.video,
               videoUrl: result.videoUrl,
               thumbnailUrl: result.thumbnailUrl,
-              score: scoredVideos.find(s => s.video.id === video.id)?.score || 0,
               creator: creator ? {
                 id: creator.id,
                 username: creator.username,
@@ -1621,10 +1539,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               } : null
             };
           } catch (error) {
+            console.error(`Error getting signed URLs for video ${video.id}:`, error);
             const creator = await storage.getUser(video.userId);
             return {
               ...video,
-              score: scoredVideos.find(s => s.video.id === video.id)?.score || 0,
               creator: creator ? {
                 id: creator.id,
                 username: creator.username,
@@ -1638,7 +1556,157 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(recommendationsWithInfo);
     } catch (error) {
-      console.error('Get personalized recommendations error:', error);
+      console.error(`Error getting category recommendations for ${req.params.category}:`, error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
+  
+  // Endpoint for similar videos based on a specific video
+  app.get('/api/videos/:id/similar', async (req, res) => {
+    try {
+      const videoId = parseInt(req.params.id);
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 8;
+      const userId = req.session.userId as number || null;
+      
+      // Get similar videos
+      const similarVideos = await recommendationService.getSimilarVideos(videoId, userId, limit);
+      
+      // Add creator info to each video
+      const videosWithInfo = await Promise.all(
+        similarVideos.map(async (video) => {
+          try {
+            const result = await getVideoWithSignedUrls(video.id);
+            const creator = await storage.getUser(video.userId);
+            
+            return {
+              ...result.video,
+              videoUrl: result.videoUrl,
+              thumbnailUrl: result.thumbnailUrl,
+              creator: creator ? {
+                id: creator.id,
+                username: creator.username,
+                displayName: creator.displayName,
+                profileImage: creator.profileImage
+              } : null
+            };
+          } catch (error) {
+            console.error(`Error getting signed URLs for video ${video.id}:`, error);
+            const creator = await storage.getUser(video.userId);
+            return {
+              ...video,
+              creator: creator ? {
+                id: creator.id,
+                username: creator.username,
+                displayName: creator.displayName,
+                profileImage: creator.profileImage
+              } : null
+            };
+          }
+        })
+      );
+      
+      res.json(videosWithInfo);
+    } catch (error) {
+      console.error(`Error getting similar videos for video ${req.params.id}:`, error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
+  
+  // Personalized recommendations for logged-in users
+  app.get('/api/recommendations', requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId as number;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+      
+      // Use our recommendation service to get personalized recommendations
+      const recommendations = await recommendationService.getRecommendations(userId, limit);
+      
+      // Add creator info to each recommendation
+      const recommendationsWithInfo = await Promise.all(
+        recommendations.map(async (video) => {
+          try {
+            const result = await getVideoWithSignedUrls(video.id);
+            const creator = await storage.getUser(video.userId);
+            
+            return {
+              ...result.video,
+              videoUrl: result.videoUrl,
+              thumbnailUrl: result.thumbnailUrl,
+              creator: creator ? {
+                id: creator.id,
+                username: creator.username,
+                displayName: creator.displayName,
+                profileImage: creator.profileImage
+              } : null
+            };
+          } catch (error) {
+            console.error(`Error getting signed URLs for video ${video.id}:`, error);
+            const creator = await storage.getUser(video.userId);
+            return {
+              ...video,
+              creator: creator ? {
+                id: creator.id,
+                username: creator.username,
+                displayName: creator.displayName,
+                profileImage: creator.profileImage
+              } : null
+            };
+          }
+        })
+      );
+      
+      res.json(recommendationsWithInfo);
+    } catch (error) {
+      console.error('Get recommendations error:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
+  
+  // Legacy content discovery endpoint (maintains backward compatibility)
+  app.get('/api/discover', requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId as number;
+      
+      // Just redirect to our new recommendations endpoint
+      const recommendations = await recommendationService.getRecommendations(userId, 10);
+      
+      // Add creator info to each recommendation
+      const recommendationsWithInfo = await Promise.all(
+        recommendations.map(async (video) => {
+          try {
+            const result = await getVideoWithSignedUrls(video.id);
+            const creator = await storage.getUser(video.userId);
+            
+            return {
+              ...result.video,
+              videoUrl: result.videoUrl,
+              thumbnailUrl: result.thumbnailUrl,
+              creator: creator ? {
+                id: creator.id,
+                username: creator.username,
+                displayName: creator.displayName,
+                profileImage: creator.profileImage
+              } : null
+            };
+          } catch (error) {
+            console.error(`Error getting signed URLs for video ${video.id}:`, error);
+            const creator = await storage.getUser(video.userId);
+            return {
+              ...video,
+              creator: creator ? {
+                id: creator.id,
+                username: creator.username,
+                displayName: creator.displayName,
+                profileImage: creator.profileImage
+              } : null
+            };
+          }
+        })
+      );
+      
+      res.json(recommendationsWithInfo);
+    } catch (error) {
+      console.error('Get discover content error:', error);
       res.status(500).json({ message: 'Server error' });
     }
   });

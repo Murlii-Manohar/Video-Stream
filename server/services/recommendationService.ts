@@ -25,68 +25,88 @@ export class RecommendationService {
    * Generate personalized video recommendations for a user
    */
   async getRecommendations(userId: number, limit = 10): Promise<Video[]> {
-    // 1. Get user's interests based on watch history and likes
-    const userInterests = await this.getUserInterests(userId);
-    
-    // 2. Get candidate videos (excluding ones the user has already seen)
-    const candidates = await this.getCandidateVideos(userInterests.viewedVideoIds);
-    
-    // 3. Score each candidate video
-    const scoredVideos = this.scoreVideos(candidates, userInterests);
-    
-    // 4. Filter and sort results
-    return this.getTopRecommendations(scoredVideos, limit);
+    try {
+      // 1. Get user's interests based on watch history and likes
+      const userInterests = await this.getUserInterests(userId);
+      
+      // 2. Get candidate videos (excluding ones the user has already seen)
+      const candidates = await this.getCandidateVideos(userInterests.viewedVideoIds);
+      
+      // 3. Score each candidate video
+      const scoredVideos = this.scoreVideos(candidates, userInterests);
+      
+      // 4. Filter and sort results
+      return this.getTopRecommendations(scoredVideos, limit);
+    } catch (error) {
+      console.error(`Error getting recommendations for user ${userId}:`, error);
+      return []; // Return empty array on error
+    }
   }
 
   /**
    * Get recommendations based on a specific video (for "Up Next" feature)
    */
   async getSimilarVideos(videoId: number, userId: number | null, limit = 5): Promise<Video[]> {
-    // 1. Get the source video
-    const sourceVideo = await this.storage.getVideo(videoId);
-    if (!sourceVideo) {
-      return [];
+    try {
+      // 1. Get the source video
+      const sourceVideo = await this.storage.getVideo(videoId);
+      if (!sourceVideo) {
+        return [];
+      }
+      
+      // 2. Get candidate videos
+      let viewedVideoIds = new Set<number>();
+      if (userId) {
+        try {
+          const history = await this.storage.getVideoHistoryByUser(userId);
+          viewedVideoIds = new Set(history.map(item => item.videoId));
+        } catch (error) {
+          console.error(`Error getting history for user ${userId}:`, error);
+          // Continue with empty history if there's an error
+        }
+      }
+      viewedVideoIds.add(videoId); // Always exclude the current video
+      
+      const candidates = await this.getCandidateVideos(viewedVideoIds);
+      
+      // 3. Score candidates based on similarity to source video
+      const scoredVideos = candidates.map(video => {
+        const score = this.calculateSimilarityScore(sourceVideo, video);
+        return { video, score };
+      });
+      
+      // 4. Sort and return top matches
+      return this.getTopRecommendations(scoredVideos, limit);
+    } catch (error) {
+      console.error(`Error getting similar videos for video ${videoId}:`, error);
+      return []; // Return empty array on error
     }
-    
-    // 2. Get candidate videos
-    let viewedVideoIds = new Set<number>();
-    if (userId) {
-      const history = await this.storage.getVideoHistoryByUser(userId);
-      viewedVideoIds = new Set(history.map(item => item.videoId));
-    }
-    viewedVideoIds.add(videoId); // Always exclude the current video
-    
-    const candidates = await this.getCandidateVideos(viewedVideoIds);
-    
-    // 3. Score candidates based on similarity to source video
-    const scoredVideos = candidates.map(video => {
-      const score = this.calculateSimilarityScore(sourceVideo, video);
-      return { video, score };
-    });
-    
-    // 4. Sort and return top matches
-    return this.getTopRecommendations(scoredVideos, limit);
   }
 
   /**
    * Get trending recommendations in a specific category
    */
   async getCategoryRecommendations(category: string, limit = 10): Promise<Video[]> {
-    // Get all videos in the given category
-    const allVideos = await this.storage.getVideos(100); // Get a reasonable number of videos
-    
-    // Filter by category and sort by views/recency
-    const categoryVideos = allVideos
-      .filter(video => video.categories?.includes(category))
-      .sort((a, b) => {
-        // Score based on views and recency
-        const viewsScore = (b.views || 0) - (a.views || 0);
-        const recencyScore = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        return viewsScore * 0.7 + recencyScore * 0.3;
-      })
-      .slice(0, limit);
-    
-    return categoryVideos;
+    try {
+      // Get all videos in the given category
+      const allVideos = await this.storage.getVideos(100); // Get a reasonable number of videos
+      
+      // Filter by category and sort by views/recency
+      const categoryVideos = allVideos
+        .filter(video => video.categories?.includes(category))
+        .sort((a, b) => {
+          // Score based on views and recency
+          const viewsScore = (b.views || 0) - (a.views || 0);
+          const recencyScore = this.getDateTimestamp(b.createdAt) - this.getDateTimestamp(a.createdAt);
+          return viewsScore * 0.7 + recencyScore * 0.3;
+        })
+        .slice(0, limit);
+      
+      return categoryVideos;
+    } catch (error) {
+      console.error(`Error getting recommendations for category ${category}:`, error);
+      return []; // Return empty array on error
+    }
   }
 
   /**
@@ -102,47 +122,67 @@ export class RecommendationService {
       liked: new Set<number>()
     };
     
-    // Get user's watch history
-    const history = await this.storage.getVideoHistoryByUser(userId);
-    
-    // Process watch history
-    await Promise.all(history.map(async (item) => {
-      interests.viewedVideoIds.add(item.videoId);
+    try {
+      // Get user's watch history
+      const history = await this.storage.getVideoHistoryByUser(userId);
       
-      const video = await this.storage.getVideo(item.videoId);
-      if (video) {
-        // Add categories and tags to interests
-        video.categories?.forEach(category => {
-          interests.categories.add(category);
+      // Process watch history
+      await Promise.all(history.map(async (item) => {
+        interests.viewedVideoIds.add(item.videoId);
+        
+        try {
+          const video = await this.storage.getVideo(item.videoId);
+          if (video) {
+            // Add categories and tags to interests
+            video.categories?.forEach(category => {
+              interests.categories.add(category);
+              
+              // Update watch frequency
+              const currentCount = interests.watchFrequency.get(category) || 0;
+              interests.watchFrequency.set(category, currentCount + 1);
+            });
+            
+            video.tags?.forEach(tag => interests.tags.add(tag));
+          }
+        } catch (error) {
+          console.error(`Error processing history item for video ${item.videoId}:`, error);
+          // Skip this item and continue
+        }
+      }));
+      
+      try {
+        // Get user's liked videos (these have higher weight)
+        const likedVideos = await this.storage.getLikedVideosByUser(userId);
+        
+        // Process likes
+        await Promise.all(likedVideos.map(async (item) => {
+          interests.liked.add(item.videoId);
           
-          // Update watch frequency
-          const currentCount = interests.watchFrequency.get(category) || 0;
-          interests.watchFrequency.set(category, currentCount + 1);
-        });
-        
-        video.tags?.forEach(tag => interests.tags.add(tag));
+          try {
+            const video = await this.storage.getVideo(item.videoId);
+            if (video) {
+              video.categories?.forEach(category => {
+                interests.categories.add(category);
+                // Likes count twice in watch frequency
+                const currentCount = interests.watchFrequency.get(category) || 0;
+                interests.watchFrequency.set(category, currentCount + 2);
+              });
+              
+              video.tags?.forEach(tag => interests.tags.add(tag));
+            }
+          } catch (error) {
+            console.error(`Error processing liked video ${item.videoId}:`, error);
+            // Skip this item and continue
+          }
+        }));
+      } catch (error) {
+        console.error(`Error fetching liked videos for user ${userId}:`, error);
+        // Continue with what we have
       }
-    }));
-    
-    // Get user's liked videos (these have higher weight)
-    const likedVideos = await this.storage.getLikedVideosByUser(userId);
-    
-    // Process likes
-    await Promise.all(likedVideos.map(async (item) => {
-      interests.liked.add(item.videoId);
-      
-      const video = await this.storage.getVideo(item.videoId);
-      if (video) {
-        video.categories?.forEach(category => {
-          interests.categories.add(category);
-          // Likes count twice in watch frequency
-          const currentCount = interests.watchFrequency.get(category) || 0;
-          interests.watchFrequency.set(category, currentCount + 2);
-        });
-        
-        video.tags?.forEach(tag => interests.tags.add(tag));
-      }
-    }));
+    } catch (error) {
+      console.error(`Error building user interests for user ${userId}:`, error);
+      // Return empty interests if there's an error
+    }
     
     return interests;
   }
@@ -151,11 +191,16 @@ export class RecommendationService {
    * Get candidate videos that the user hasn't watched yet
    */
   private async getCandidateVideos(excludeVideoIds: Set<number>): Promise<Video[]> {
-    // Get a batch of recent videos as candidates
-    const recentVideos = await this.storage.getVideos(50);
-    
-    // Filter out videos the user has already seen
-    return recentVideos.filter(video => !excludeVideoIds.has(video.id));
+    try {
+      // Get a batch of recent videos as candidates
+      const recentVideos = await this.storage.getVideos(50);
+      
+      // Filter out videos the user has already seen
+      return recentVideos.filter(video => !excludeVideoIds.has(video.id));
+    } catch (error) {
+      console.error('Error getting candidate videos:', error);
+      return []; // Return empty array on error
+    }
   }
 
   /**
@@ -191,7 +236,7 @@ export class RecommendationService {
       score += Math.min((video.views || 0) / 1000, 2); // Max 2 points from views
       
       // Recency boost - newer videos get a small advantage
-      const daysSinceCreation = (Date.now() - new Date(video.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+      const daysSinceCreation = (Date.now() - this.getDateTimestamp(video.createdAt)) / (1000 * 60 * 60 * 24);
       score += Math.max(0, 2 - (daysSinceCreation / 15)); // Bonus diminishes over 30 days
       
       return { video, score };
@@ -233,7 +278,7 @@ export class RecommendationService {
     score += Math.min((candidateVideo.views || 0) / 1000, 1.5);
     
     // Recency boost
-    const daysSinceCreation = (Date.now() - new Date(candidateVideo.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+    const daysSinceCreation = (Date.now() - this.getDateTimestamp(candidateVideo.createdAt)) / (1000 * 60 * 60 * 24);
     score += Math.max(0, 1 - (daysSinceCreation / 30));
     
     return score;
@@ -248,5 +293,17 @@ export class RecommendationService {
       .sort((a, b) => b.score - a.score)
       .slice(0, limit)
       .map(item => item.video);
+  }
+  
+  /**
+   * Helper method to safely convert a date string or Date object to timestamp
+   */
+  private getDateTimestamp(date: string | Date | null): number {
+    if (!date) return 0;
+    try {
+      return new Date(date).getTime();
+    } catch (error) {
+      return 0;
+    }
   }
 }
